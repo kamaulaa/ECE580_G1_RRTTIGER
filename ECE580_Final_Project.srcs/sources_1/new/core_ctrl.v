@@ -27,7 +27,8 @@ module core_ctrl
     output put_item_in_fifo,
     output add_edge_state,
     output sample_point_state,
-    output outer_loop_check_state
+    output outer_loop_check_state,
+    output [N_SQUARED-1:0] inner_loop_counter
 );
 
 // Define states
@@ -47,11 +48,11 @@ localparam OUTERMOST_ITER_MAX = 1024;
 
 reg [9:0] outermost_loop_counter = 10'b0;
 wire outermost_loop_check = !path_found && outermost_loop_counter <= OUTERMOST_ITER_MAX;
+wire [N_SQUARED-1:0] inner_loop_counter;
 
 reg [2:0] state;
 wire [2:0] next_state;
 
-// Define control variables?
 
 always @ ( posedge clk ) begin
     if ( reset ) begin
