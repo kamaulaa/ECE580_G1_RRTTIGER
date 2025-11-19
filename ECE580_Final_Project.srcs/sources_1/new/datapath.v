@@ -59,6 +59,12 @@ reg valid_input_in_inner_loop_update_stage;
 reg [9:0] potential_x_min_in_inner_loop_update_stage;
 reg [9:0] potential_y_min_in_inner_loop_update_stage;
 
+// Kamaula: potential_x_min_in_inner_loop_update_stage and potential_y_min_in_inner_loop_update_stage need to be upat
+always @( posedge clk ) begin
+    potential_x_min_in_inner_loop_update_stage <= THIS SHOULD BE THE X OUTPUT OF THE SYSTOLIC ARRAY // Han/Kamaula link in
+    potential_y_min_in_inner_loop_update_stage <= THIS SHOULD BE THE y OUTPUT OF THE SYSTOLIC ARRAY // Han/Kamaula link in
+end
+
 always @( posedge clk ) begin
     valid_input_in_inner_loop_update_stage <= xxx // Han/Kamaula: the xxx should be replaced by the "valid_out" of the overall systolic array 
 end
@@ -101,14 +107,22 @@ always @( posedge clk ) begin
  end
  
  reg [9:0] current_cost;
- assign wire [9:0] current_cost_input = quantization_block((x_rand - i_output_of_systolic_array) * (x_rand - i_output_of_systolic_array) + (y_rand - j_output_of_systolic_array) * (y_rand - j_output_of_systolic_array));
+ 
+ // Han/Kamaula note that i didn't decide how many bits we should use to store the costs, just pick something reasonable i guess? 
+ assign wire [9:0] current_cost_input = quantization_block((x_rand - i_output_of_systolic_array) * (x_rand - i_output_of_systolic_array) + (y_rand - j_output_of_systolic_array) * (y_rand - j_output_of_systolic_array)); // Han/Kamaula: todo create a quantization module to handle this
+ // Han/Kamaula: note that rd_cost is supposed to be the cost currently being read of the data structure storing the costs and the indices for what we should be reading should be the output x and y coordinates from the systolic array (they should be propagated through entire systolic array)
+ // also the cost data structure should have a read enable signal that's the "valid_output" signal from the systolic array (cost should only be read if the point didn't hit anything)
+ // Han/Kamaula: i think the only thing i didn't put a note about yet is that when "add_edge_state" is high from the controller, we should make sure
+ // to take the values in xmin, ymin, and cmin and put xmin and ymin into the vertices grid as the parents of xrand and yrand. we should also make sure to mark the vertice grid at 
+ // xrand and yrand as 1 and we should make sure that the cost data structure at xrand yrand is updated to cmin. i think that should be good.
+ 
  wire update_min_point = c_min < (current_cost + rd_cost) ? 1'b1 : 1'b0;
  
  always @( posedge clk) begin
     if ( reset ) begin
         // maybe do something?
     end else begin
-        if ( current_cost_input == 1'b1 ) begin
+        if ( update_min_point == 1'b1 ) begin
             x_min <= potential_x_min_in_inner_loop_update_stage;
             y_min <= potential_y_min_in_inner_loop_update_stage;
             c_min <= current_cost;
