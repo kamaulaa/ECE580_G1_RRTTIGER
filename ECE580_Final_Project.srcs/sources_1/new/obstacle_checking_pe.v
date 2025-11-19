@@ -5,7 +5,6 @@
 // processing element implementation for obstacle checking
 //
 // NOTE: Check 3 uses combinational division which creates long critical path
-//       (~21 gate delays for 21-bit division). This limits max clock frequency.
 //       To increase throughput, we should consider pipelining the divisions in Check 3
 //       across multiple cycles (adds latency but increases clock frequency).
 //////////////////////////////////////////////////////////////////////////////////
