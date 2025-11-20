@@ -49,18 +49,18 @@ module rrt_grid
 
     // compute flattened address : y * GRID_W + x
     function [ADDR_BITS-1:0] idx;
-        input [X_BITS-1:0] x;
-        input [Y_BITS-1:0] y;
+        input [X_BITS-1:0] x_coord;
+        input [Y_BITS-1:0] y_coord;
         begin
-            idx = y * GRID_W + x;
+            idx = y_coord * GRID_W + x_coord;
         end
     endfunction
 
     integer i;
 
-    // expensive in hw?
     always @(posedge clk) begin
         if (rst) begin
+            // expensive in hw?
             for (i = 0; i < DEPTH; i = i + 1) begin
                 mem_occupied[i] <= 1'b0;
                 mem_parent_x[i] <= {X_BITS{1'b0}};

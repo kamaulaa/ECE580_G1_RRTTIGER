@@ -8,11 +8,11 @@ module neighbor_search
 #(
     // adjustable grid parameters
     // TODO: need to move all these to dpath 
-    parameter GRID_W    = 64,
-    parameter GRID_H    = 64,
-    parameter X_BITS    = 6, // log2(GRID_W)
-    parameter Y_BITS    = 6, // log2(GRID_H)
-    parameter ADDR_BITS = 12  // log2(GRID_W*GRID_H) for flattened addr
+    parameter GRID_W    = 1024,
+    parameter GRID_H    = 1024,
+    parameter X_BITS    = 10, // log2(GRID_W)
+    parameter Y_BITS    = 10, // log2(GRID_H)
+    parameter N_SQUARED = 1024*1024  // log2(GRID_W*GRID_H) for flattened addr
 )(
     input                       clk,
     input                       rst,
@@ -22,11 +22,11 @@ module neighbor_search
     input [X_BITS-1:0]         node_x,
     input [Y_BITS-1:0]         node_y,
     input [X_BITS-1:0]         window_radius, // search window radius 
-    input [ADDR_BITS-1:0]      occupancy_status, // base addr of grid in memory
-    output reg                 busy, // window loop status
+    input [N_SQUARED-1:0]      occupancy_status, // base addr of grid in memory
+    output reg                 neighbor_search_busy, // window loop status
     
     // detected neighbor node output (queue-style stream)
-    input                      nb_ready, // neighbor ready?
+    // input                      nb_ready, // neighbor ready?
     output reg                 nb_found, // neighbor found 
     output reg [X_BITS-1:0]    nb_x,    
     output reg [Y_BITS-1:0]    nb_y
@@ -34,11 +34,11 @@ module neighbor_search
 );
 
     // compute flattened address: y * GRID_W + x
-    function [ADDR_BITS-1:0] idx;
-        input [X_BITS-1:0] x;
-        input [Y_BITS-1:0] y;
+    function [N_SQUARED-1:0] idx;
+        input [X_BITS-1:0] x_coord;
+        input [Y_BITS-1:0] y_coord;
         begin
-            idx = y * GRID_W + x;
+            idx = y_coord * GRID_W + x_coord;
         end
     endfunction
 
@@ -81,61 +81,60 @@ module neighbor_search
         end
     endfunction
 
-    reg [X_BITS-1:0] x_search; 
-    reg [Y_BITS-1:0] y_search; 
+    reg [X_BITS-1:0] x_coord; 
+    reg [Y_BITS-1:0] y_coord; 
 
     always @(posedge clk) begin
         if (rst) begin
-            x_search   <= {X_BITS{1'b0}};
-            y_search   <= {Y_BITS{1'b0}};
+            x_coord   <= {X_BITS{1'b0}};
+            y_coord   <= {Y_BITS{1'b0}};
             nb_found   <= 1'b0;
             nb_x       <= {X_BITS{1'b0}};
             nb_y       <= {Y_BITS{1'b0}};
-            busy       <= 1'b0;
+            neighbor_search_busy       <= 1'b0;
         end
         else begin
             nb_found <= 1'b0; // default
 
-            // TODO: NEED TO RESET search_start SIGNAL IN DPATH AFTER FIRST ITERATION (if busy == 1'b1 then search_start == 1'b0)
-            if (search_start == 1'b1 && busy == 1'b0) begin 
-                x_search <= left_x(node_x, window_radius);
-                y_search <= bottom_y(node_y, window_radius);
-                busy     <= 1'b1;
+            if (search_start == 1'b1 && neighbor_search_busy == 1'b0) begin 
+                x_coord <= left_x(node_x, window_radius);
+                y_coord <= bottom_y(node_y, window_radius);
+                neighbor_search_busy     <= 1'b1;
             end
 
-            else if (busy == 1'b1) begin // search_start == 1'b0 && busy == 1'b1
+            else if (neighbor_search_busy == 1'b1) begin // search_start == 1'b0 && neighbor_search_busy == 1'b1
                 // occupancy checks --> if node found, output coordinates
-                if (occupancy_status[idx(x_search,y_search)] == 1'b1) begin
+                if (occupancy_status[idx(x_coord,y_coord)] == 1'b1) begin
                     nb_found <= 1'b1;
-                    nb_x     <= x_search;
-                    nb_y     <= y_search;
+                    nb_x     <= x_coord;
+                    nb_y     <= y_coord;
                 end
                 else begin
-                    nb_found = 1'b0;
+                    nb_found <= 1'b0;
                     nb_x     <= {X_BITS{1'b0}};
                     nb_y     <= {Y_BITS{1'b0}}; 
                 end
 
                 // loop iterations 
                 // update when x-coordinate needs traversal
-                if (x_search < right_x(node_x, window_radius)) begin
-                    x_search <= x_search + 1;
-                    busy     <= 1'b1;
+                if (x_coord < right_x(node_x, window_radius)) begin
+                    x_coord <= x_coord + 1;
+                    neighbor_search_busy     <= 1'b1;
                 end
                 // update when y-coordinate needs traversal
-                else if (x_search == right_x(node_x, window_radius) && 
-                    y_search < top_y(node_y, window_radius)) begin
-                    x_search <= left_x(node_x, window_radius);
-                    y_search <= y_search + 1;
-                    busy     <= 1'b1;
+                else if (x_coord == right_x(node_x, window_radius) && 
+                    y_coord < top_y(node_y, window_radius)) begin
+                    x_coord <= left_x(node_x, window_radius);
+                    y_coord <= y_coord + 1;
+                    neighbor_search_busy     <= 1'b1;
                 end
                 // update when last iteration 
-                else if (x_search == right_x(node_x, window_radius) && 
-                    y_search == top_y(node_y, window_radius)) begin
+                else if (x_coord == right_x(node_x, window_radius) && 
+                    y_coord == top_y(node_y, window_radius)) begin
                     // finished searching window
-                    x_search <= {X_BITS{1'b0}};
-                    y_search <= {Y_BITS{1'b0}}; 
-                    busy <= 1'b0;
+                    x_coord <= {X_BITS{1'b0}};
+                    y_coord <= {Y_BITS{1'b0}}; 
+                    neighbor_search_busy <= 1'b0;
                 end
             end
         end
