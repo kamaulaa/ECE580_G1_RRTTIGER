@@ -104,7 +104,7 @@ end
 wire [COORDINATE_WIDTH-1:0] nearest_neighbor_x; // default to start points if init_state??
 wire [COORDINATE_WIDTH-1:0] nearest_neighbor_y; 
 
-// Quantization block for cost calculation
+// quantization block for cost calculation
 quantization_block #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .COST_WIDTH(COST_WIDTH)) quantized_cost (
     .clk(clk),
     .rst(reset),
@@ -146,21 +146,21 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .NUM_PE(NUM_PE)) pe_array (
 // Fifo should also output fifo_empty and fifo_full signals to the controller based on state of fifo
 // The systolic array should read in the i and j value at the head pointer of the fifo
 
-assign done_draining = ~( rd_fifo || systolic_valid_out || systolic_valid_pair); // idk if valid_pair should be here
+assign done_draining = ~( rd_fifo || systolic_valid_out || systolic_valid_pair); // idk if valid_pair should be here - just bc we have avalid pair doesnt mean we're done draining
 
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
 wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q < goal_top_bound) && (systolic_val_y1_q > goal_bottom_bound);
 assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_found if we reach goal AND connection is collision-free
 
-// Connecting the vertices grid
+// Connecting the vertices grid (Han - need to instantiate the grid)
 wire [N:0] vertices_grid_i_rd;
 wire [N:0] vertices_grid_j_rd;
 assign vertices_grid_i_rd = inner_loop_counter / N; // Han: use these as indices to read the vertices grid, need to handle N and N_SQUARED
 assign vertices_grid_j_rd = inner_loop_counter % N;
 // Han: the "add_edge_state" input signal from the controller should serve as the write enable signal to the vertex grid because it tells us that we're in the state where we want to record the new random point and its optimal parent
 
-// Update x_rand, y_rand
+// Update x_rand, y_rand - REPLACE With the random number generator you made (Han)
 always @( posedge clk ) begin
     if ( reset ) begin
         // maybe should do something?
@@ -193,8 +193,8 @@ always @( posedge clk ) begin
         c_min <= {COST_WIDTH{1'b1}};  // Initialize to max value for minimum comparison
     end else begin
         if ( update_min_point ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
-            x_min <= systolic_val_x2_q;  // Use delayed systolic output
-            y_min <= systolic_val_y2_q;  // Use delayed systolic output
+            x_min <= systolic_val_x2_q;  // used registered value since it takes an extra cycle after we find a valid pair for us to actually update these values
+            y_min <= systolic_val_y2_q;  
             c_min <= total_cost; // we need to store total cost (edge + existing)
         end
     end 
