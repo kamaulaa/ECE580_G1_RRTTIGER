@@ -102,25 +102,18 @@ generate
     end
 endgenerate
 
-// output from last PE
+// output from last PE , latency = NUM_PE
 assign valid_pair = valid_chain[NUM_PE];  // Valid = 1 means no collision across ALL obstacles
 
-// Capture valid output pair from last PE immediately 
-assign val_x1 = valid_pair ? x1_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
-assign val_y1 = valid_pair ? y1_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
-assign val_x2 = valid_pair ? x2_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
-assign val_y2 = valid_pair ? y2_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
-
-// pack valid_chain into a vector for OR reduction
-wire [NUM_PE:0] valid_vector;
-genvar k;
-generate
-    for (k = 0; k <= NUM_PE; k = k + 1) begin: pack_valid
-        assign valid_vector[k] = valid_chain[k];
-    end
-endgenerate
+// output coordinates directly from chain 
+assign val_x1 = x1_chain[NUM_PE];
+assign val_y1 = y1_chain[NUM_PE];
+assign val_x2 = x2_chain[NUM_PE];
+assign val_y2 = y2_chain[NUM_PE];
 
 // Check if ANY PE in the systolic array has valid data using OR reduction
-assign valid_out = |valid_vector;
+assign valid_out = |{valid_chain[10], valid_chain[9], valid_chain[8], valid_chain[7], 
+                      valid_chain[6], valid_chain[5], valid_chain[4], valid_chain[3],
+                      valid_chain[2], valid_chain[1], valid_chain[0]};
 
 endmodule 
