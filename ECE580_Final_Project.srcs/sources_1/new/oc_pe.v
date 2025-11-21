@@ -141,7 +141,7 @@ module oc_pe #(
 
     // OUTPUT registers 
     // registers endpoint data and collision result on each clock cycle
-    // data flows through systollic array with 1 cycle latency per stage
+    // data flows through systolic array with 1 cycle latency per stage
     always @(posedge clk) begin
         if (rst) begin
             valid_out <= 1'b0;
