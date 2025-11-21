@@ -45,17 +45,16 @@ module datapath #(
     output path_found,
     output point_hit,
     output done_draining,
-    output fifo_full,
-    output fifo_empty,
     output parent_equals_current,
+    output reg new_random_point_valid, // valid random point
+    output neighbor_search_busy, // already looking for nearest neighbor
     
     // Control -> dpath
     input init_state,
     input add_edge_state,
     input outer_loop_check_state,
     input generate_req, // to random point generator module
-    input search_start, // to neighbor search module
-    input [N_SQUARED-1:0] inner_loop_counter // are we not using this anymore/instantiating the grid
+    input search_start // to neighbor search module 
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -64,7 +63,7 @@ module datapath #(
 // Random point registers
 reg [COORDINATE_WIDTH-1:0] x_rand; // register that holds the output of the random number generator 
 reg [COORDINATE_WIDTH-1:0] y_rand; 
-reg new_random_point_valid; // valid random point
+
 
 // Minimum cost point registers
 reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of radius/window search
@@ -75,7 +74,6 @@ reg [COST_WIDTH-1:0] c_min; // minimum cost found so far
 wire nb_found; // a nearest neighbor was found in the window
 wire [COORDINATE_WIDTH-1:0] nb_x; // coords of that nearest neighbor
 wire [COORDINATE_WIDTH-1:0] nb_y;
-wire neighbor_search_busy; // already looking for nearest neighbor
 
 // Control signals
 wire valid_in = new_random_point_valid && nb_found; // valid when we have both valid random point and neighbor
