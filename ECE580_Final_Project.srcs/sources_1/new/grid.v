@@ -1,5 +1,6 @@
 //----------------------------------------------------------------------
 // Han
+// ECE580 Final Project
 // rrt_grid:
 // grid based environment storage module
 // read access to check if a cell is occupied, write access to add nodes

@@ -35,5 +35,6 @@ initial begin
     #10 a = 2'b10; b = 2'b01;
     #10 a = 2'b11; b = 2'b11;
     #10 $finish;
-end endmodule
+end 
+endmodule
 
