@@ -28,6 +28,8 @@ module oc_array #(
     input wire [COORDINATE_WIDTH-1:0] n_x2,
     input wire [COORDINATE_WIDTH-1:0] n_y2,
 
+    // valid input signal - high when we have both valid random point and neighbor found
+    input wire valid_in,
    
     output reg valid_out,   // does the systolic array have ANY valid data?
     output reg valid_pair, // last pair passes all obstacles
@@ -39,29 +41,6 @@ module oc_array #(
     output reg [COORDINATE_WIDTH-1:0]   val_y2  //nearest neighbor
 );
 
-// Register to store previous input pair for change detection
-reg [COORDINATE_WIDTH-1:0] prev_r_x1, prev_r_y1, prev_n_x2, prev_n_y2;
-reg new_pair;  // High when input pair changes
-
-// Detect new pair
-always @(posedge clk) begin
-    if (rst) begin
-        prev_r_x1 <= {COORDINATE_WIDTH{1'b0}};
-        prev_r_y1 <= {COORDINATE_WIDTH{1'b0}};
-        prev_n_x2 <= {COORDINATE_WIDTH{1'b0}};
-        prev_n_y2 <= {COORDINATE_WIDTH{1'b0}};
-        new_pair <= 1'b1;  // Start with new_pair high
-    end else begin
-        prev_r_x1 <= r_x1;
-        prev_r_y1 <= r_y1;
-        prev_n_x2 <= n_x2;
-        prev_n_y2 <= n_y2;
-        // New pair detected if any coordinate changed
-        new_pair <= (r_x1 != prev_r_x1) || (r_y1 != prev_r_y1) || 
-                    (n_x2 != prev_n_x2) || (n_y2 != prev_n_y2);
-    end
-end
-
 // Intermediate wires to chain PEs together (NUM_PE+1 to include input and final output)
 wire valid_chain [0:NUM_PE];  // valid signal between PEs (1 = valid/no collision, 0 = invalid/collision)
 wire [COORDINATE_WIDTH-1:0] x1_chain [0:NUM_PE];
@@ -69,8 +48,8 @@ wire [COORDINATE_WIDTH-1:0] y1_chain [0:NUM_PE];
 wire [COORDINATE_WIDTH-1:0] x2_chain [0:NUM_PE];
 wire [COORDINATE_WIDTH-1:0] y2_chain [0:NUM_PE];
 
-// First PE gets valid signal high only for new pairs (resets chain for new data)
-assign valid_chain[0] = new_pair ? 1'b1 : 1'b0;
+// First PE gets valid_in signal (high when we have both valid random point and neighbor found)
+assign valid_chain[0] = valid_in;
 
 // First PE gets input coordinates
 assign x1_chain[0] = r_x1;

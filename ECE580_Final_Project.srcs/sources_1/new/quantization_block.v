@@ -17,19 +17,19 @@
 
 module quantization_block #(
     parameter COORDINATE_WIDTH = 10,
-    parameter COST_WIDTH = 12  // bits for cost output - can also use 11 bits safely but extra bit added for accumulation
+    parameter COST_WIDTH = 16  // bits for cost output
+                                // for 1024x1024 grid: max single edge = 2046 (needs 11 bits)
+                                // max accumulated cost ~32 edges = 65,472 (needs 16 bits)
 )(
     input wire clk,
     input wire rst,
-    input wire valid_in,
 
     input wire [COORDINATE_WIDTH-1:0] r_x1,  // random point x
     input wire [COORDINATE_WIDTH-1:0] r_y1,  // random point y
     input wire [COORDINATE_WIDTH-1:0] n_x2,  // nearest neighbor x
     input wire [COORDINATE_WIDTH-1:0] n_y2,  // nearest neighbor y
 
-    output reg [COST_WIDTH-1:0] cost_out,    // manhattan distance cost
-    output reg valid_out                     // Valid signal delayed by 1 cycle
+    output reg [COST_WIDTH-1:0] cost_out    // manhattan distance cost
 );
 
 //  Manhattan distance calculation
@@ -41,14 +41,12 @@ wire [COORDINATE_WIDTH:0] abs_y = (diff_y < 0) ? -diff_y : diff_y;
 
 wire [COST_WIDTH-1:0] manhattan_distance = abs_x + abs_y;
 
-// adds ine cycle latecy to register outpuut
+// adds one cycle latency to register output
 always @(posedge clk) begin
     if (rst) begin
         cost_out <= 0;
-        valid_out <= 0;
     end else begin
         cost_out <= manhattan_distance;
-        valid_out <= valid_in;
     end
 end
 
