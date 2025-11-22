@@ -20,7 +20,7 @@ module datapath #(
     parameter NUM_PE = 10,
     parameter N = 1024,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
-    parameter OUTERMOST_ITER_MAX = 1024,
+    parameter OUTERMOST_ITER_MAX = 1024, // number of points that can be generated & stored until failure
     parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
     parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
     parameter ADDR_BITS = 20    // log2(N_SQUARED) = log2(1,048,576) = 20
@@ -177,28 +177,24 @@ assign done_draining = ~(nb_found || systolic_valid_out || systolic_valid_pair);
 
 // NEED STARTING POINT TO BE FIRST POINT ADDED TO OCCUPANCY STATUS
 
-// array to store points in grid 
-reg [N_SQUARED-1:0] occupancy_status; // gradually take away as clear up code
-
-localparam ARRAY_WIDTH = COORDINATE_WIDTH*4; // x_coord + y_coord + parent_x + parent_y
-localparam X_MSB       = ARRAY_WIDTH - 1;
-localparam X_LSB       = X_MSB - (COORDINATE_WIDTH-1);
-localparam Y_MSB       = X_LSB - 1;
-localparam Y_LSB       = Y_MSB - (COORDINATE_WIDTH-1);
-localparam PX_MSB      = Y_LSB - 1;
-localparam PX_LSB      = PX_MSB - (COORDINATE_WIDTH-1);
-localparam PY_MSB      = PX_LSB - 1;
-localparam PY_LSB      = PY_MSB - (COORDINATE_WIDTH-1);
+// array to store points in grid and parent index
+localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2; // parent_index + x_coord + y_coord 
+localparam PARENT_IDX_MSB = ARRAY_WIDTH - 1;
+localparam PARENT_IDX_LSB = ARRAY_WIDTH - OUTERMOST_ITER_BITS;
+localparam Y_MSB = PARENT_IDX_LSB - 1;
+localparam Y_LSB = PARENT_IDX_LSB - COORDINATE_WIDTH;
+localparam X_MSB = Y_LSB -1;
+localparam X_LSB = 0; // Y_LSB - COORDINATE_WIDTH;
 
 reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1];
-reg [OUTERMOST_ITER_BITS-1:0] occupied_array_count; // counts number of occupied points stored for array indexing
+reg [OUTERMOST_ITER_BITS-1:0] occupied_array_idx; // counts number of occupied points stored for array indexing
 
-// wire [COORDINATE_WIDTH-1:0] x_coord  = occupied_points_array[occupied_array_count][X_MSB : X_LSB];
-// wire [COORDINATE_WIDTH-1:0] y_coord  = occupied_points_array[occupied_array_count][Y_MSB : Y_LSB];
-// wire [COORDINATE_WIDTH-1:0] parent_x = occupied_points_array[occupied_array_count][PX_MSB : PX_LSB];
-// wire [COORDINATE_WIDTH-1:0] parent_y = occupied_points_array[occupied_array_count][PY_MSB : PY_LSB];
+// HOW TO SLICE X-COORD, Y-CCORD, AND PARENT IDX FROM occupied_points_array
+// wire [COORDINATE_WIDTH-1:0] x_coordinate = occupied_points_array[occupied_array_idx][X_MSB:X_LSB];
+// wire [COORDINATE_WIDTH-1:0] y_coordinate = occupied_points_array[occupied_array_idx][Y_MSB:Y_LSB];           
+// wire [OUTERMOST_ITER_BITS-1:0] parent_index = occupied_points_array[occupied_array_idx][PARENT_IDX_MSB:PARENT_IDX_LSB];
 
-// compute flattened address : y * GRID_W + x
+// compute flattened address : y * N + x
 // TODO may need to change to bit shifting instead of multiplication 
 function [N_SQUARED-1:0] idx;
     input [COORDINATE_WIDTH-1:0] x_coord;
@@ -230,19 +226,18 @@ endfunction
     // check if generated random point already exists
     always @(*) begin
         points_already_exists = 1'b0; // default to invalid
-        for (integer i = 0; i < occupied_array_count; i = i + 1) begin
+        for (integer i = 0; i < occupied_array_idx; i = i + 1) begin
             points_already_exists = points_already_exists || ((occupied_points_array[i][X_MSB : X_LSB] == x_rand_wire) 
             && (occupied_points_array[i][Y_MSB : Y_LSB] == y_rand_wire));
         end
     end
 
-    // Update x_rand, y_rand, and occupancy_status
+    // Update x_rand, y_rand
     always @( posedge clk ) begin
         if (reset) begin
             x_rand <= {COORDINATE_WIDTH{1'b0}};
             y_rand <= {COORDINATE_WIDTH{1'b0}};
             new_random_point_valid <= 1'b0;
-            occupancy_status <= {N_SQUARED{1'b0}};
         end 
         else begin
             new_random_point_valid <= 1'b0; // default
@@ -274,15 +269,15 @@ endfunction
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
 
-    // combinational logic done in 1 cycle?
+    // combinational logic done in 1 cycle in FPGA feasible?
     always @(*) begin
         best_dist  = {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
         best_x     = {COORDINATE_WIDTH{1'b0}};
         best_y     = {COORDINATE_WIDTH{1'b0}};
         best_index = {OUTERMOST_ITER_BITS{1'b0}};
 
-        if (search_neighbor==1'b1 && (occupied_array_count != 0)) begin
-            for (i = 0; i < occupied_array_count; i = i + 1) begin
+        if (search_neighbor==1'b1 && (occupied_array_idx != 0)) begin
+            for (i = 0; i < occupied_array_idx; i = i + 1) begin
                 x_i = occupied_points_array[i][X_MSB : X_LSB];
                 y_i = occupied_points_array[i][Y_MSB : Y_LSB];
 
@@ -306,19 +301,9 @@ endfunction
                     best_y     = y_i;
                     best_index = i[OUTERMOST_ITER_BITS-1:0];  // cast integer → index width
                 end
-
-                // TODO: STEERING LOGIC compute new point location 
-                // THIS PART MOVED TO SEQUENTIAL--> ONCE IMPLEMENTED, GET RID OF THIS SECTION
-                // if (i == occupied_array_count - 1) begin
-                //     // compute new point that is delta q step from best nearest neighbor
-                //     // x_rand, y_rand = random point
-                //     // best_x, best_y = nearest neighbor point
-                // end 
-                
             end
         end
     end
-
 
     always @( posedge clk ) begin
         if (reset) begin
@@ -340,8 +325,10 @@ endfunction
                 new_point_parent_x <= best_x;
                 new_point_parent_y <= best_y;
 
-                // TODO: STEERING LOGIC compute new point location 
+                // LAUREN TODO: STEERING LOGIC compute new point location 
                 // compute new point that is delta q step from best nearest neighbor
+                // need to also compute distance between new point and nearest neighbor
+                // this distance should be stored as a reg so kamaula can use it for cost calculation
                 new_point_x = (best_x >> tau_denom_bits) + ((x_rand - best_x) >> tau_denom_bits); 
                 new_point_y = (best_y >> tau_denom_bits) + ((y_rand - best_y) >> tau_denom_bits); 
             end
@@ -353,16 +340,16 @@ endfunction
 // NEIGHBOR SEARCH IN WINDOW FRAME
 
     // adjustable window radius
-    localparam [COORDINATE_WIDTH-1:0] WINDOW_RADIUS = {{(COORDINATE_WIDTH-3){1'b0}},3'b101}; // 5
+    localparam [COORDINATE_WIDTH-1:0] WINDOW_RADIUS = {{(COORDINATE_WIDTH-3){1'b0}},3'b101}; // e.g. 5
 
     // instantiate neighbor search module
     window_frame_search #(
-        .GRID_W   (N),
-        .GRID_H   (N),
-        .X_BITS   (COORDINATE_WIDTH),
-        .Y_BITS   (COORDINATE_WIDTH),
-        .N_SQUARED (N_SQUARED)
-    ) find_neighbor (
+        .N   (N),
+        .COORDINATE_WIDTH   (COORDINATE_WIDTH),
+        .N_SQUARED (N_SQUARED),
+        .OUTERMOST_ITER_MAX (OUTERMOST_ITER_MAX),
+        .ARRAY_WIDTH (ARRAY_WIDTH)
+    ) find_neighbors (
         .clk             (clk),
         .rst             (reset),
 
@@ -371,7 +358,7 @@ endfunction
         .node_x          (x_rand),
         .node_y          (y_rand),
         .window_radius   (WINDOW_RADIUS),
-        .occupancy_status(occupancy_status),
+        .occupied_points_array(occupied_points_array),
         .window_search_busy (window_search_busy),
 
         // detected neighbor node output (queue-style stream)
