@@ -49,7 +49,7 @@ module datapath #(
     output parent_equals_current,
     output reg new_random_point_valid, // valid random point
     output window_search_busy, // already looking for nearest neighbor
-    output reg nearest_neighbor_found,
+    output reg new_point_created,
     
     // Control -> dpath
     input init_state,
@@ -270,6 +270,10 @@ endfunction
     reg [COORDINATE_WIDTH:0] nearest_neighbor_y;
     reg [OUTERMOST_ITER_BITS-1:0] nearest_neighbor_index;
 
+    localparam[1:0] tau_denom_bits = 2'b11; // 2^3 = 8 for bit shifting division
+    reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
+    reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
+
     // combinational logic done in 1 cycle?
     always @(*) begin
         best_dist  = {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
@@ -302,30 +306,44 @@ endfunction
                     best_y     = y_i;
                     best_index = i[OUTERMOST_ITER_BITS-1:0];  // cast integer → index width
                 end
+
+                // TODO: STEERING LOGIC compute new point location 
+                // THIS PART MOVED TO SEQUENTIAL--> ONCE IMPLEMENTED, GET RID OF THIS SECTION
+                // if (i == occupied_array_count - 1) begin
+                //     // compute new point that is delta q step from best nearest neighbor
+                //     // x_rand, y_rand = random point
+                //     // best_x, best_y = nearest neighbor point
+                // end 
+                
             end
         end
     end
 
-    // TODO: NEED TO COMPUTE NEW POINT LOCATION AND SEND NEW POINT TO SYSTOLIC ARRAY
-    
+
     always @( posedge clk ) begin
         if (reset) begin
             best_dist  <= {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
             best_x     <= {COORDINATE_WIDTH{1'b0}};
             best_y     <= {COORDINATE_WIDTH{1'b0}};
             best_index <= {OUTERMOST_ITER_BITS{1'b0}};
-            nearest_neighbor_x <= {COORDINATE_WIDTH{1'b0}};
-            nearest_neighbor_y <= {COORDINATE_WIDTH{1'b0}};
-            nearest_neighbor_index <= {OUTERMOST_ITER_BITS{1'b0}};
-            nearest_neighbor_found <= 1'b0;
+            new_point_x <= {COORDINATE_WIDTH{1'b0}};
+            new_point_y <= {COORDINATE_WIDTH{1'b0}};
+            new_point_parent_x <= {COORDINATE_WIDTH{1'b0}};
+            new_point_parent_y <= {COORDINATE_WIDTH{1'b0}};
+            new_point_created <= 1'b0;
         end 
         else begin
-            nearest_neighbor_found <= 1'b0;
+            new_point_created <= 1'b0;
             if (search_neighbor==1'b1) begin     
-                nearest_neighbor_found <= 1'b1;      
-                nearest_neighbor_x <= best_x;
-                nearest_neighbor_y <= best_y;
+                new_point_created <= 1'b1;      
                 nearest_neighbor_index <= best_index;
+                new_point_parent_x <= best_x;
+                new_point_parent_y <= best_y;
+
+                // TODO: STEERING LOGIC compute new point location 
+                // compute new point that is delta q step from best nearest neighbor
+                new_point_x = (best_x >> tau_denom_bits) + ((x_rand - best_x) >> tau_denom_bits); 
+                new_point_y = (best_y >> tau_denom_bits) + ((y_rand - best_y) >> tau_denom_bits); 
             end
         end
     end
