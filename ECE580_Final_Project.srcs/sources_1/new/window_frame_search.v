@@ -1,11 +1,13 @@
 //----------------------------------------------------------------------
 // Han
 // ECE580 Final Project
-// neighbor node search in a window radius from random point
-// output: neighbor nodes found (1 cycle per cell iteration in window)
+// neighbor node search in a window radius from new point on grid 
+// this is after a new point is added at after random point generation and collision check 
+// purpose is to minimize rewiring cross 
+// output: neighbor nodes found (1 cycle per cell iteration in window) --> NEEDS UPDATE AFTER 11/20 CHANGE DISCUSSION
 //----------------------------------------------------------------------
 
-module neighbor_search
+module window_frame_search
 #(
     // adjustable grid parameters
     // TODO: need to move all these to dpath 

@@ -14,7 +14,7 @@ module core_ctrl
     // TODO: need to pass these from core into dpath and control modules 
     parameter N = 1024,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = N, // NEED THIS?
+    parameter OUTERMOST_ITER_MAX = 1024, // NEED THIS?
     parameter X_BITS = 10, // log2(GRID_WIDTH)
     parameter Y_BITS = 10, // log2(GRID_HEIGHT )
     parameter ADDR_BITS = 20 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
@@ -29,7 +29,8 @@ module core_ctrl
     input done_draining,
     input parent_equals_current,
     input new_random_point_valid,
-    input neighbor_search_busy,
+    input window_search_busy,
+    input nearest_neighbor_found,
     
     // Need output control signals to the datapath
     output init_state,
@@ -37,7 +38,8 @@ module core_ctrl
     output outer_loop_check_state,
     // output reg [N_SQUARED-1:0] inner_loop_counter,
     output reg generate_req, // to random point generator module
-    output reg search_start // to neighbor search module 
+    output reg window_search_start, // to window search module 
+    output reg search_neighbor // signal to search neighbor from random generated point 
 );
 
 // Define states
@@ -66,7 +68,6 @@ always @ ( posedge clk ) begin
     end
 end
 
-// REALLY DIRTY (WRONG) COMBINATION AND SEQUENTIAL LOGIC MIX GOING ON HERE...
 always @ (*) begin
     case (state)
         INIT : begin
@@ -103,28 +104,54 @@ always @ (*) begin
             end
         end
 
+        // GENERATE_RANDOM_POINT: begin
+        //     // Decide next state
+        //     if (new_random_point_valid == 1'b1) begin // new random point generated 
+        //         next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+        //         generate_req <= 1'b0;
+        //         window_search_start <= 1'b1; // start neighbor search
+        //     end
+        //     else begin // random point generated is an already existing point
+        //         next_state <= GENERATE_RANDOM_POINT;
+        //         generate_req <= 1'b1;
+        //     end
+        //     // Set any relevant output signals to the datapath
+        // end
         GENERATE_RANDOM_POINT: begin
             // Decide next state
             if (new_random_point_valid == 1'b1) begin // new random point generated 
-                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                next_state <= SEARCH_NEAREST_NEIGHBOR;
                 generate_req <= 1'b0;
-                search_start <= 1'b1; // start neighbor search
+                search_neighbor <= 1'b1;
+                // window_search_start <= 1'b1; // start neighbor search
             end
             else begin // random point generated is an already existing point
                 next_state <= GENERATE_RANDOM_POINT;
                 generate_req <= 1'b1;
             end
-            
             // Set any relevant output signals to the datapath
-            // not sure what we need here yet
         end
 
-        CHECK_POINTS_IN_SQUARE_RADIUS: begin
-            if (search_start == 1'b1 && neighbor_search_busy == 1'b0) begin
-                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-                search_start <= 1'b0; 
+        SEARCH_NEAREST_NEIGHBOR: begin
+            if (nearest_neighbor_found == 1'b1) begin
+                search_neighbor <= 1'b0;
+                next_state <= CHECK_COLLISION; 
             end
-            else if (neighbor_search_busy == 1'b1) begin
+            else begin
+                next_state <= SEARCH_NEAREST_NEIGHBOR;
+            end
+        end
+
+        // TODO: new state for collision check and adding new point that is delta q step from neighbor node?
+        // this is also where node will be added to occupancy array alongside its parent points (nearest neighbor)
+
+        // TODO: this should be now after systolic array collision detection
+        CHECK_POINTS_IN_SQUARE_RADIUS: begin
+            if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
+                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                window_search_start <= 1'b0; 
+            end
+            else if (window_search_busy == 1'b1) begin
                 next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
             end
             else begin // HAN TODO: not sure what this logic is doing

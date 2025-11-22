@@ -9,7 +9,8 @@ module core
     // ADJUSTABLE GRID PARAMETERS
     parameter N              = 1024,
     parameter N_SQUARED      = N * N,
-    parameter OUTERMOST_ITER_MAX = N, // used by core_ctrl
+    parameter OUTERMOST_ITER_MAX = 1024, // adjustable limit 
+    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
     parameter X_BITS         = 10,    // log2(GRID_WIDTH)
     parameter Y_BITS         = 10,    // log2(GRID_HEIGHT)
     parameter ADDR_BITS      = 20     // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
@@ -40,7 +41,9 @@ module core
         .N_SQUARED (N_SQUARED),
         .X_BITS    (X_BITS),
         .Y_BITS    (Y_BITS),
-        .ADDR_BITS (ADDR_BITS)
+        .ADDR_BITS (ADDR_BITS),
+        .OUTERMOST_ITER_MAX (OUTERMOST_ITER_MAX),
+        .OUTERMOST_ITER_BITS (OUTERMOST_ITER_BITS)
     ) datapath_setup (
         .clk                 (clk),
         .reset               (reset),

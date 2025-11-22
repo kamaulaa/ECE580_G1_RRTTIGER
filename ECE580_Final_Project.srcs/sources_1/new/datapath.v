@@ -20,8 +20,9 @@ module datapath #(
     parameter NUM_PE = 10,
     parameter N = 1024,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
-    parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK
-                                // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
+    parameter OUTERMOST_ITER_MAX = 1024,
+    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
+    parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
     parameter ADDR_BITS = 20    // log2(N_SQUARED) = log2(1,048,576) = 20
 )(
     input clk,
@@ -47,14 +48,16 @@ module datapath #(
     output done_draining,
     output parent_equals_current,
     output reg new_random_point_valid, // valid random point
-    output neighbor_search_busy, // already looking for nearest neighbor
+    output window_search_busy, // already looking for nearest neighbor
+    output nearest_neighbor_found,
     
     // Control -> dpath
     input init_state,
     input add_edge_state,
     input outer_loop_check_state,
     input generate_req, // to random point generator module
-    input search_start // to neighbor search module 
+    input window_search_start, // to window search module 
+    input search_neighbor // signal to search neighbor from random generated point
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -166,36 +169,44 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 assign done_draining = ~(nb_found || systolic_valid_out || systolic_valid_pair); // not sure if nb_found is correct here to replace rd_fifo
 
 ////////////////////////////////////////////////////////////////////////
-// VERTICES GRID (uses occupancy_status) & PARENT GRID (TODO)
+// VERTICES GRID 
 
 // Han: the "add_edge_state" signal should serve as the write enable signal to update the vertex grid (occupancy_status) 
 // because it tells us that we're in the state where we want to record the new random point and its optimal parent
 // The "add edge state" signal should also be used as the write enable signal for the costs grid and parent grid
 
-// Vertices grid (occupancy tracking) - whether coordinate has a vertex/point in the tree
-reg [N_SQUARED-1:0] occupancy_status; 
+// NEED STARTING POINT TO BE FIRST POINT ADDED TO OCCUPANCY STATUS
+
+// array to store points in grid 
+reg [N_SQUARED-1:0] occupancy_status; // gradually take away as clear up code
+
+localparam ARRAY_WIDTH = COORDINATE_WIDTH*4; // x_coord + y_coord + parent_x + parent_y
+localparam X_MSB       = ARRAY_WIDTH - 1;
+localparam X_LSB       = X_MSB - (COORDINATE_WIDTH-1);
+localparam Y_MSB       = X_LSB - 1;
+localparam Y_LSB       = Y_MSB - (COORDINATE_WIDTH-1);
+localparam PX_MSB      = Y_LSB - 1;
+localparam PX_LSB      = PX_MSB - (COORDINATE_WIDTH-1);
+localparam PY_MSB      = PX_LSB - 1;
+localparam PY_LSB      = PY_MSB - (COORDINATE_WIDTH-1);
+
+reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1];
+reg [OUTERMOST_ITER_BITS-1:0] occupied_array_count; // counts number of occupied points stored for array indexing
+
+// wire [COORDINATE_WIDTH-1:0] x_coord  = occupied_points_array[occupied_array_count][X_MSB : X_LSB];
+// wire [COORDINATE_WIDTH-1:0] y_coord  = occupied_points_array[occupied_array_count][Y_MSB : Y_LSB];
+// wire [COORDINATE_WIDTH-1:0] parent_x = occupied_points_array[occupied_array_count][PX_MSB : PX_LSB];
+// wire [COORDINATE_WIDTH-1:0] parent_y = occupied_points_array[occupied_array_count][PY_MSB : PY_LSB];
+
 // compute flattened address : y * GRID_W + x
+// TODO may need to change to bit shifting instead of multiplication 
 function [N_SQUARED-1:0] idx;
     input [COORDINATE_WIDTH-1:0] x_coord;
     input [COORDINATE_WIDTH-1:0] y_coord;
-     begin
+    begin
         idx = y_coord * N + x_coord;
     end
 endfunction
-
-// Vertices grid scanning during outer_loop_check_state:
-wire [N:0] vertices_grid_i_rd;
-wire [N:0] vertices_grid_j_rd;
-assign vertices_grid_i_rd = inner_loop_counter / N; // use these as indices to scan occupancy_status
-assign vertices_grid_j_rd = inner_loop_counter % N;
-
-// TODO: If occupancy_status[idx(vertices_grid_i_rd, vertices_grid_j_rd)] == 1 then set point_hit = 1
-// TODO: need a fifo module - input should be vertices_grid_i_rd and vertices_grid_j_rd if point is hit
-// TODO: Fifo should use fifo write enable from controller
-// TODO: Fifo output should be fed to systolic array via nb_x/nb_y
-// TODO: occupancy_status is already being updated when new_random_point_valid - verify this aligns with add_edge_state
-// TODO: Create parent grid - 2D array storing (x_min, y_min) parent coordinates at location (x_rand, y_rand)
-// TODO: Parent grid write enable = add_edge_state, write data = {x_min, y_min}, write address = idx(x_rand, y_rand)
 
 ////////////////////////////////////////////////////////////////////////
 // RANDOM GENERATOR 
@@ -216,12 +227,18 @@ assign vertices_grid_j_rd = inner_loop_counter % N;
         .random_point_y       (y_rand_wire)
     );
 
-    // check if generated point already exists
-    wire rand_valid_wire = !occupancy_status[idx(x_rand_wire, y_rand_wire)];
+    // check if generated random point already exists
+    always @(*) begin
+        points_already_exists = 1'b0; // default to invalid
+        for (integer i = 0; i < occupied_array_count; i = i + 1) begin
+            points_already_exists = points_already_exists || ((occupied_points_array[i][X_MSB : X_LSB] == x_rand_wire) 
+            && (occupied_points_array[i][Y_MSB : Y_LSB] == y_rand_wire));
+        end
+    end
 
     // Update x_rand, y_rand, and occupancy_status
     always @( posedge clk ) begin
-        if ( reset ) begin
+        if (reset) begin
             x_rand <= {COORDINATE_WIDTH{1'b0}};
             y_rand <= {COORDINATE_WIDTH{1'b0}};
             new_random_point_valid <= 1'b0;
@@ -229,11 +246,81 @@ assign vertices_grid_j_rd = inner_loop_counter % N;
         end 
         else begin
             new_random_point_valid <= 1'b0; // default
-            if (generate_req==1'b1 && rand_valid_wire==1'b1) begin           
+            if (generate_req==1'b1 && points_already_exists==1'b0) begin           
                 x_rand <= x_rand_wire;
                 y_rand <= y_rand_wire;
                 new_random_point_valid <= 1'b1;
-                occupancy_status[idx(x_rand_wire, y_rand_wire)] <= 1'b1; // mark point as occupied
+            end
+        end
+    end
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+// NEARBOR NEIGHBOR SEARCH 
+// search across all existing points for nearest point to randomly generated point 
+
+    reg [COORDINATE_WIDTH-1:0] x_i, y_i;
+    reg [COORDINATE_WIDTH:0] dx, dy; // |x1-x2|, |y1-y2|
+    reg [COORDINATE_WIDTH*2+1:0] distance; // dx^2 + dy^2
+    reg [COORDINATE_WIDTH-1:0] best_x, best_y;
+    reg [OUTERMOST_ITER_BITS-1:0] best_index;
+    reg [COORDINATE_WIDTH*2+1:0] best_dist;
+
+    reg [COORDINATE_WIDTH:0] nearest_neighbor_x;
+    reg [COORDINATE_WIDTH:0] nearest_neighbor_y;
+    reg [OUTERMOST_ITER_BITS-1:0] nearest_neighbor_index;
+
+    // combinational logic done in 1 cycle?
+    always @(*) begin
+        best_dist  = {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
+        best_x     = {COORDINATE_WIDTH{1'b0}};
+        best_y     = {COORDINATE_WIDTH{1'b0}};
+        best_index = {OUTERMOST_ITER_BITS{1'b0}};
+
+        if (search_neighbor==1'b1 && (occupied_array_count != 0)) begin
+            for (i = 0; i < occupied_array_count; i = i + 1) begin
+                x_i = occupied_points_array[i][X_MSB : X_LSB];
+                y_i = occupied_points_array[i][Y_MSB : Y_LSB];
+
+                // dx = |x_rand - x_i|
+                if (x_rand >= x_i)
+                    dx = x_rand - x_i;
+                else
+                    dx = x_i - x_rand;
+                // dy = |y_rand - y_i|
+                if (y_rand >= y_i)
+                    dy = y_rand - y_i;
+                else
+                    dy = y_i - y_rand;
+
+                // squared euclidean distance
+                distance = dx*dx + dy*dy;
+                // keep smallest distance across all points compared
+                if (distance < best_dist) begin
+                    best_dist  = distance;
+                    best_x     = x_i;
+                    best_y     = y_i;
+                    best_index = i[OUTERMOST_ITER_BITS-1:0];  // cast integer → index width
+                end
+            end
+        end
+    end
+
+    always @( posedge clk ) begin
+        if (reset) begin
+            best_dist  <= {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
+            best_x     <= {COORDINATE_WIDTH{1'b0}};
+            best_y     <= {COORDINATE_WIDTH{1'b0}};
+            best_index <= {OUTERMOST_ITER_BITS{1'b0}};
+            nearest_neighbor_x <= {COORDINATE_WIDTH{1'b0}};
+            nearest_neighbor_y <= {COORDINATE_WIDTH{1'b0}};
+            nearest_neighbor_index <= {OUTERMOST_ITER_BITS{1'b0}};
+        end 
+        else begin
+            if (search_neighbor==1'b1) begin           
+                nearest_neighbor_x <= best_x;
+                nearest_neighbor_y <= best_y;
+                nearest_neighbor_index <= best_index;
             end
         end
     end
@@ -246,7 +333,7 @@ assign vertices_grid_j_rd = inner_loop_counter % N;
     localparam [COORDINATE_WIDTH-1:0] WINDOW_RADIUS = {{(COORDINATE_WIDTH-3){1'b0}},3'b101}; // 5
 
     // instantiate neighbor search module
-    neighbor_search #(
+    window_frame_search #(
         .GRID_W   (N),
         .GRID_H   (N),
         .X_BITS   (COORDINATE_WIDTH),
@@ -257,12 +344,12 @@ assign vertices_grid_j_rd = inner_loop_counter % N;
         .rst             (reset),
 
         // control
-        .search_start    (search_start),
+        .window_search_start    (window_search_start),
         .node_x          (x_rand),
         .node_y          (y_rand),
         .window_radius   (WINDOW_RADIUS),
         .occupancy_status(occupancy_status),
-        .neighbor_search_busy (neighbor_search_busy),
+        .window_search_busy (window_search_busy),
 
         // detected neighbor node output (queue-style stream)
         // .nb_ready        (nb_ready),
