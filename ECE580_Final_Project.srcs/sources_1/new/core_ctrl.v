@@ -30,7 +30,7 @@ module core_ctrl
     input parent_equals_current,
     input new_random_point_valid,
     input window_search_busy,
-    input nearest_neighbor_found,
+    input new_point_created,
     
     // Need output control signals to the datapath
     output init_state,
@@ -140,7 +140,7 @@ always @ (*) begin
         // neeed to edit after confirming combinational behavior 
         // new point should be computed here too 
         SEARCH_NEAREST_NEIGHBOR: begin
-            if (nearest_neighbor_found == 1'b1) begin
+            if (new_point_created == 1'b1) begin
                 search_neighbor <= 1'b0;
                 next_state <= CHECK_COLLISION; 
             end
