@@ -43,173 +43,174 @@ module core_ctrl
     output reg check_collision // signal to start collision checking module
 );
 
-// Define states
-localparam INIT = 4'b0000;
-localparam OUTERMOST_LOOP_CHECK = 4'b0001;
-localparam GENERATE_RANDOM_POINT = 4'b0010;
-localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
-localparam CHECK_COLLISION = 4'b0100;
-localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
-localparam DRAIN_ARR = 4'b0110;
-localparam ADD_EDGE = 4'b0111;
-localparam FAILURE = 4'b1000;
-localparam TRACEBACK = 4'b1001;
-localparam SUCCESS = 4'b1010;
+    // Define states
+    localparam INIT = 4'b0000;
+    localparam OUTERMOST_LOOP_CHECK = 4'b0001;
+    localparam GENERATE_RANDOM_POINT = 4'b0010;
+    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
+    localparam CHECK_COLLISION = 4'b0100;
+    localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
+    localparam DRAIN_ARR = 4'b0110;
+    localparam ADD_EDGE = 4'b0111;
+    localparam FAILURE = 4'b1000;
+    localparam TRACEBACK = 4'b1001;
+    localparam SUCCESS = 4'b1010;
 
-reg [N_SQUARED-1:0] outermost_loop_counter = {OUTERMOST_ITER_MAX{1'b0}}; 
-wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
+    reg [N_SQUARED-1:0] outermost_loop_counter = {OUTERMOST_ITER_MAX{1'b0}}; 
+    wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
 
-reg [3:0] state;
-reg [3:0] next_state;
+    reg [3:0] state;
+    reg [3:0] next_state;
 
-always @ ( posedge clk ) begin
-    if ( reset ) begin
-        state <= INIT;
+    always @ ( posedge clk ) begin
+        if ( reset ) begin
+            state <= INIT;
+        end
+        else begin
+            state <= next_state;
+        end
     end
-    else begin
-        state <= next_state;
-    end
-end
 
-always @ (*) begin
-    case (state)
-        INIT : begin
-            // Decide next state
-            next_state <= OUTERMOST_LOOP_CHECK;
-            
-            // TODO: Set any relevant output signals to the datapath
-            // vertices_reset <= 1'b1; // reset the regs holding the points
-            // edges_reset <= 1'b1; // reset the regs holding the edges
-            
-        end
-
-        OUTERMOST_LOOP_CHECK: begin
-            // This means we still have attempts left at finding a path
-            if ( outermost_loop_check == 1'b1) begin // HAN: check if in neighbot searching loop?
+    always @ (*) begin
+        case (state)
+            INIT : begin
                 // Decide next state
-                next_state <= GENERATE_RANDOM_POINT;
-                generate_req <= 1'b1; // request new random point
+                next_state <= OUTERMOST_LOOP_CHECK;
                 
-                // Set any relevant output signals to the datapath
-                // not sure what we need here yet
+                // TODO: Set any relevant output signals to the datapath
+                // vertices_reset <= 1'b1; // reset the regs holding the points
+                // edges_reset <= 1'b1; // reset the regs holding the edges
+                
             end
-            else begin // This means we either found a path or ran out of iteration attempts
+
+            // iterate until path is found or max iterations limit reached
+            OUTERMOST_LOOP_CHECK: begin
+                // This means we still have attempts left at finding a path
+                if ( outermost_loop_check == 1'b1) begin // HAN: check if in neighbot searching loop?
+                    // Decide next state
+                    next_state <= GENERATE_RANDOM_POINT;
+                    generate_req <= 1'b1; // request new random point
+                    
+                    // Set any relevant output signals to the datapath
+                    // not sure what we need here yet
+                end
+                else begin // This means we either found a path or ran out of iteration attempts
+                    // Decide next state
+                    if ( path_found ) begin // We got to the end because we successfully found a path
+                        next_state <= SUCCESS;
+                    end
+                    else begin // We got to the end because we ran out of iteration attempts
+                        next_state <= FAILURE;
+                    end
+                    
+                    // Set any relevant output signals to the datapath
+                    // not sure what we need here yet                
+                end
+            end
+
+            // GENERATE_RANDOM_POINT: begin
+            //     // Decide next state
+            //     if (new_random_point_valid == 1'b1) begin // new random point generated 
+            //         next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+            //         generate_req <= 1'b0;
+            //         window_search_start <= 1'b1; // start neighbor search
+            //     end
+            //     else begin // random point generated is an already existing point
+            //         next_state <= GENERATE_RANDOM_POINT;
+            //         generate_req <= 1'b1;
+            //     end
+            //     // Set any relevant output signals to the datapath
+            // end
+
+            GENERATE_RANDOM_POINT: begin
                 // Decide next state
-                if ( path_found ) begin // We got to the end because we successfully found a path
-                    next_state <= SUCCESS;
+                if (new_random_point_valid == 1'b1) begin // new random point generated 
+                    next_state <= SEARCH_NEAREST_NEIGHBOR;
+                    generate_req <= 1'b0;
+                    search_neighbor <= 1'b1;
+                    // window_search_start <= 1'b1; // start neighbor search
                 end
-                else begin // We got to the end because we ran out of iteration attempts
-                    next_state <= FAILURE;
+                else begin // random point generated is an already existing point
+                    next_state <= GENERATE_RANDOM_POINT;
+                    generate_req <= 1'b1;
                 end
-                
                 // Set any relevant output signals to the datapath
-                // not sure what we need here yet                
             end
-        end
 
-        // GENERATE_RANDOM_POINT: begin
-        //     // Decide next state
-        //     if (new_random_point_valid == 1'b1) begin // new random point generated 
-        //         next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-        //         generate_req <= 1'b0;
-        //         window_search_start <= 1'b1; // start neighbor search
-        //     end
-        //     else begin // random point generated is an already existing point
-        //         next_state <= GENERATE_RANDOM_POINT;
-        //         generate_req <= 1'b1;
-        //     end
-        //     // Set any relevant output signals to the datapath
-        // end
+            // there will always be a nearest neighbor
+            // new point should be computed here too 
+            SEARCH_NEAREST_NEIGHBOR: begin
+                if (new_point_created == 1'b1) begin
+                    search_neighbor <= 1'b0;
+                    next_state <= CHECK_COLLISION; 
+                end
+            end
 
-        GENERATE_RANDOM_POINT: begin
-            // Decide next state
-            if (new_random_point_valid == 1'b1) begin // new random point generated 
-                next_state <= SEARCH_NEAREST_NEIGHBOR;
-                generate_req <= 1'b0;
-                search_neighbor <= 1'b1;
-                // window_search_start <= 1'b1; // start neighbor search
+            // check collision of new node with obstacles via systolic array
+            // this is also where node will be added to occupancy array + parent node (nearest neighbor)
+            // if collision occurs, new ndde is not added and new random point is generated 
+            CHECK_COLLISION: begin
+                if (point_hit == 1'b1) begin
+                    next_state <= GENERATE_RANDOM_POINT;
+                end
+                else begin
+                    next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                end
             end
-            else begin // random point generated is an already existing point
-                next_state <= GENERATE_RANDOM_POINT;
-                generate_req <= 1'b1;
-            end
-            // Set any relevant output signals to the datapath
-        end
 
-        // there will always be a nearest neighbor
-        // neeed to edit after confirming combinational behavior 
-        // new point should be computed here too 
-        SEARCH_NEAREST_NEIGHBOR: begin
-            if (new_point_created == 1'b1) begin
-                search_neighbor <= 1'b0;
-                next_state <= CHECK_COLLISION; 
+            // check if their are any neighbors in the square window radius around new node
+            CHECK_POINTS_IN_SQUARE_RADIUS: begin
+                if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
+                    next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                    window_search_start <= 1'b0; 
+                end
+                else if (window_search_busy == 1'b1) begin
+                    next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                end
+                //  KAMUALA TODO: update this logic
+                else begin 
+                    if (done_draining == 1'b1) begin
+                        next_state <= DRAIN_ARR;
+                    end else begin
+                        next_state <= ADD_EDGE;
+                    end
+                end
             end
-        end
 
-        // check collision of new node with obstacles via systolic array
-        // this is also where node will be added to occupancy array + parent node (nearest neighbor)
-        // if collision, new ndde is
-        CHECK_COLLISION: begin
-            if (point_hit == 1'b1) begin
-                next_state <= GENERATE_RANDOM_POINT;
-            end
-            else begin
-                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-            end
-        end
-
-        // TODO: this should be now after systolic array collision detection
-        CHECK_POINTS_IN_SQUARE_RADIUS: begin
-            if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
-                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-                window_search_start <= 1'b0; 
-            end
-            else if (window_search_busy == 1'b1) begin
-                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-            end
-            //  KAMUALA TODO: update this logic
-            else begin 
+            // KAMUALA TODO: combine DRAIN_ARR and ADD_EDGE states?
+            // compare costs of neighbors found in window radius and add edge to best one
+            // this is the rewiring step
+            DRAIN_ARR: begin
                 if (done_draining == 1'b1) begin
-                    next_state <= DRAIN_ARR;
-                end else begin
                     next_state <= ADD_EDGE;
+                end else begin
+                    next_state <= DRAIN_ARR;
                 end
             end
-        end
-
-        //  KAMUALA TODO: combine DRAIN_ARR and ADD_EDGE states?
-        DRAIN_ARR: begin
-            if (done_draining == 1'b1) begin
-                next_state <= ADD_EDGE;
-            end else begin
-                next_state <= DRAIN_ARR;
+            ADD_EDGE: begin
+                next_state <= OUTERMOST_LOOP_CHECK;
+                outermost_loop_counter <= outermost_loop_counter + 1'b1;
             end
-        end
-        ADD_EDGE: begin
-            next_state <= OUTERMOST_LOOP_CHECK;
-            outermost_loop_counter <= outermost_loop_counter + 1'b1;
-        end
 
-        FAILURE: begin
-            next_state <= FAILURE; // not sure how to end the simulation --> i think to end the simulation we use a $finish flag in the testbench
-            // thus this should be sufficient to keep us in the next state
-        end
+            FAILURE: begin
+                next_state <= FAILURE; // not sure how to end the simulation --> i think to end the simulation we use a $finish flag in the testbench
+                // thus this should be sufficient to keep us in the next state
+            end
 
-        // LAUREN TODO: connect this with other states
-        TRACEBACK: begin
-            if (parent_equals_current == 1'b1) begin
+            // LAUREN TODO: incorporate this state if still needed 
+            TRACEBACK: begin
+                if (parent_equals_current == 1'b1) begin
+                    next_state <= SUCCESS;
+                end else begin
+                    next_state <= TRACEBACK;
+                end
+            end
+
+            SUCCESS: begin
                 next_state <= SUCCESS;
-            end else begin
-                next_state <= TRACEBACK;
             end
-        end
 
-        SUCCESS: begin
-            next_state <= SUCCESS;
-        end
-
-    endcase
-
-end
+        endcase
+    end
 
 endmodule

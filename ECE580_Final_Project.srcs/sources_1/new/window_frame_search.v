@@ -11,64 +11,64 @@ module window_frame_search
 #(
     // adjustable grid parameters
     // TODO: need to move all these to dpath 
-    parameter GRID_W    = 1024,
-    parameter GRID_H    = 1024,
-    parameter X_BITS    = 10, // log2(GRID_W)
-    parameter Y_BITS    = 10, // log2(GRID_H)
-    parameter N_SQUARED = 1024*1024  // log2(GRID_W*GRID_H) for flattened addr
+    parameter N = 1024,
+    parameter COORDINATE_WIDTH = 10, // log2(N)
+    parameter N_SQUARED = 1024*1024,  // log2(N*N) for flattened addr
+    parameter OUTERMOST_ITER_MAX = 1024, // adjustable limit
+    parameter ARRAY_WIDTH = COORDINATE_WIDTH*4 // occupancy status array width (1 bit per cell)
 )(
     input                       clk,
     input                       rst,
 
     // control
     input                      search_start,  // pulse to start a search
-    input [X_BITS-1:0]         node_x,
-    input [Y_BITS-1:0]         node_y,
-    input [X_BITS-1:0]         window_radius, // search window radius 
-    input [N_SQUARED-1:0]      occupancy_status, // base addr of grid in memory
+    input [COORDINATE_WIDTH-1:0]         node_x,
+    input [COORDINATE_WIDTH-1:0]         node_y,
+    input [COORDINATE_WIDTH-1:0]         window_radius, // search window radius 
+    input [ARRAY_WIDTH-1:0]    occupied_points_array [0:OUTERMOST_ITER_MAX-1], // occupancy status array
     output reg                 neighbor_search_busy, // window loop status
     
     // detected neighbor node output (queue-style stream)
     // input                      nb_ready, // neighbor ready?
     output reg                 nb_found, // neighbor found 
-    output reg [X_BITS-1:0]    nb_x,    
-    output reg [Y_BITS-1:0]    nb_y
+    output reg [COORDINATE_WIDTH-1:0]    nb_x,    
+    output reg [COORDINATE_WIDTH-1:0]    nb_y
 
 );
 
-    // compute flattened address: y * GRID_W + x
+    // compute flattened address: y * N + x
     function [N_SQUARED-1:0] idx;
-        input [X_BITS-1:0] x_coord;
-        input [Y_BITS-1:0] y_coord;
+        input [COORDINATE_WIDTH-1:0] x_coord;
+        input [COORDINATE_WIDTH-1:0] y_coord;
         begin
-            idx = y_coord * GRID_W + x_coord;
+            idx = y_coord * N + x_coord;
         end
     endfunction
 
     // TODO: this may not be the most effective window search implementation 
     //       since area of window will differ if node is near edges of grid
     // left x-coordinate 
-    function [X_BITS-1:0] left_x;
-        input [X_BITS-1:0] node_x;
-        input [X_BITS-1:0] window_radius;
+    function [COORDINATE_WIDTH-1:0] left_x;
+        input [COORDINATE_WIDTH-1:0] node_x;
+        input [COORDINATE_WIDTH-1:0] window_radius;
         begin           
             left_x = (node_x < window_radius) ? 0 : (node_x - window_radius);
         end
     endfunction
 
     // right x-coordinate
-    function [X_BITS-1:0] right_x;
-        input [X_BITS-1:0] node_x;
-        input [X_BITS-1:0] window_radius;
+    function [COORDINATE_WIDTH-1:0] right_x;
+        input [COORDINATE_WIDTH-1:0] node_x;
+        input [COORDINATE_WIDTH-1:0] window_radius;
         begin
-            right_x = (node_x + window_radius >= GRID_W) ? (GRID_W - 1) : (node_x + window_radius);
+            right_x = (node_x + window_radius >= N) ? (N - 1) : (node_x + window_radius);
         end
     endfunction
 
     // bottom y-coordinate
-    function [Y_BITS-1:0] bottom_y;
-        input [Y_BITS-1:0] node_y;
-        input [X_BITS-1:0] window_radius;
+    function [COORDINATE_WIDTH-1:0] bottom_y;
+        input [COORDINATE_WIDTH-1:0] node_y;
+        input [COORDINATE_WIDTH-1:0] window_radius;
         begin
             bottom_y = (node_y < window_radius) ? 0 : (node_y - window_radius);
         end
@@ -76,24 +76,24 @@ module window_frame_search
     endfunction
 
     // top y-coordinate
-    function [Y_BITS-1:0] top_y;
-        input [Y_BITS-1:0] node_y;
-        input [X_BITS-1:0] window_radius;
+    function [COORDINATE_WIDTH-1:0] top_y;
+        input [COORDINATE_WIDTH-1:0] node_y;
+        input [COORDINATE_WIDTH-1:0] window_radius;
         begin
-            top_y = (node_y + window_radius >= GRID_H) ? (GRID_H - 1) : (node_y + window_radius);
+            top_y = (node_y + window_radius >= N) ? (N - 1) : (node_y + window_radius);
         end
     endfunction
 
-    reg [X_BITS-1:0] x_coord; 
-    reg [Y_BITS-1:0] y_coord; 
+    reg [COORDINATE_WIDTH-1:0] x_coord; 
+    reg [COORDINATE_WIDTH-1:0] y_coord; 
 
     always @(posedge clk) begin
         if (rst) begin
-            x_coord   <= {X_BITS{1'b0}};
-            y_coord   <= {Y_BITS{1'b0}};
+            x_coord   <= {COORDINATE_WIDTH{1'b0}};
+            y_coord   <= {COORDINATE_WIDTH{1'b0}};
             nb_found   <= 1'b0;
-            nb_x       <= {X_BITS{1'b0}};
-            nb_y       <= {Y_BITS{1'b0}};
+            nb_x       <= {COORDINATE_WIDTH{1'b0}};
+            nb_y       <= {COORDINATE_WIDTH{1'b0}};
             neighbor_search_busy       <= 1'b0;
         end
         else begin
@@ -114,8 +114,8 @@ module window_frame_search
                 end
                 else begin
                     nb_found <= 1'b0;
-                    nb_x     <= {X_BITS{1'b0}};
-                    nb_y     <= {Y_BITS{1'b0}}; 
+                    nb_x     <= {COORDINATE_WIDTH{1'b0}};
+                    nb_y     <= {COORDINATE_WIDTH{1'b0}}; 
                 end
 
                 // loop iterations 
@@ -135,8 +135,8 @@ module window_frame_search
                 else if (x_coord == right_x(node_x, window_radius) && 
                     y_coord == top_y(node_y, window_radius)) begin
                     // finished searching window
-                    x_coord <= {X_BITS{1'b0}};
-                    y_coord <= {Y_BITS{1'b0}}; 
+                    x_coord <= {COORDINATE_WIDTH{1'b0}};
+                    y_coord <= {COORDINATE_WIDTH{1'b0}}; 
                     neighbor_search_busy <= 1'b0;
                 end
             end
