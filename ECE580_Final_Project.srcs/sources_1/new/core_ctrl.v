@@ -151,10 +151,10 @@ always @ (*) begin
         // if collision, new ndde is
         CHECK_COLLISION: begin
             if (point_hit == 1'b1) begin
-                next_state <= OUTERMOST_LOOP_CHECK;
+                next_state <= GENERATE_RANDOM_POINT;
             end
             else begin
-                next_state <= ADD_EDGE;
+                next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
             end
         end
 
@@ -167,7 +167,8 @@ always @ (*) begin
             else if (window_search_busy == 1'b1) begin
                 next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
             end
-            else begin // HAN TODO: not sure what this logic is doing
+            //  KAMUALA TODO: update this logic
+            else begin 
                 if (done_draining == 1'b1) begin
                     next_state <= DRAIN_ARR;
                 end else begin
@@ -176,7 +177,7 @@ always @ (*) begin
             end
         end
 
-        // HAN TODO: get rid of?
+        //  KAMUALA TODO: combine DRAIN_ARR and ADD_EDGE states?
         DRAIN_ARR: begin
             if (done_draining == 1'b1) begin
                 next_state <= ADD_EDGE;
@@ -184,7 +185,6 @@ always @ (*) begin
                 next_state <= DRAIN_ARR;
             end
         end
-
         ADD_EDGE: begin
             next_state <= OUTERMOST_LOOP_CHECK;
             outermost_loop_counter <= outermost_loop_counter + 1'b1;
@@ -195,6 +195,7 @@ always @ (*) begin
             // thus this should be sufficient to keep us in the next state
         end
 
+        // LAUREN TODO: connect this with other states
         TRACEBACK: begin
             if (parent_equals_current == 1'b1) begin
                 next_state <= SUCCESS;
