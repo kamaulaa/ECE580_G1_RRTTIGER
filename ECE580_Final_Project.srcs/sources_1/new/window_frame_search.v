@@ -25,7 +25,8 @@ module window_frame_search
     input [COORDINATE_WIDTH-1:0]         node_x,
     input [COORDINATE_WIDTH-1:0]         node_y,
     input [COORDINATE_WIDTH-1:0]         window_radius, // search window radius 
-    input [ARRAY_WIDTH-1:0]    occupied_points_array [0:OUTERMOST_ITER_MAX-1], // occupancy status array
+    // TODO NEED UNROLLED IMPLEMENTATION FOR THIS
+    input [N_SQUARED-1:0]    occupancy_status_grid, // occupancy status grid
     output reg                 neighbor_search_busy, // window loop status
     
     // detected neighbor node output (queue-style stream)
@@ -107,7 +108,7 @@ module window_frame_search
 
             else if (neighbor_search_busy == 1'b1) begin // search_start == 1'b0 && neighbor_search_busy == 1'b1
                 // occupancy checks --> if node found, output coordinates
-                if (occupancy_status[idx(x_coord,y_coord)] == 1'b1) begin
+                if (occupancy_status_grid[idx(x_coord,y_coord)] == 1'b1) begin
                     nb_found <= 1'b1;
                     nb_x     <= x_coord;
                     nb_y     <= y_coord;

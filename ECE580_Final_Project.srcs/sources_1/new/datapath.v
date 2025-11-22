@@ -169,9 +169,9 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 assign done_draining = ~(nb_found || systolic_valid_out || systolic_valid_pair); // not sure if nb_found is correct here to replace rd_fifo
 
 ////////////////////////////////////////////////////////////////////////
-// VERTICES GRID 
+// POINT ARRAY & GRID 
 
-// Han: the "add_edge_state" signal should serve as the write enable signal to update the vertex grid (occupancy_status) 
+// Note from Lauren: the "add_edge_state" signal should serve as the write enable signal to update the vertex grid (occupancy_status) 
 // because it tells us that we're in the state where we want to record the new random point and its optimal parent
 // The "add edge state" signal should also be used as the write enable signal for the costs grid and parent grid
 
@@ -186,8 +186,9 @@ localparam Y_LSB = PARENT_IDX_LSB - COORDINATE_WIDTH;
 localparam X_MSB = Y_LSB -1;
 localparam X_LSB = 0; // Y_LSB - COORDINATE_WIDTH;
 
-reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1];
+reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1]; // array to store points in first-come order
 reg [OUTERMOST_ITER_BITS-1:0] occupied_array_idx; // counts number of occupied points stored for array indexing
+reg [N_SQUARED-1:0] occupancy_status_grid; // grid like representation of occupancy
 
 // HOW TO SLICE X-COORD, Y-CCORD, AND PARENT IDX FROM occupied_points_array
 // wire [COORDINATE_WIDTH-1:0] x_coordinate = occupied_points_array[occupied_array_idx][X_MSB:X_LSB];
@@ -355,10 +356,10 @@ endfunction
 
         // control
         .window_search_start    (window_search_start),
+        .window_radius   (WINDOW_RADIUS),
         .node_x          (x_rand),
         .node_y          (y_rand),
-        .window_radius   (WINDOW_RADIUS),
-        .occupied_points_array(occupied_points_array),
+        .occupancy_status_grid (occupancy_status_grid),
         .window_search_busy (window_search_busy),
 
         // detected neighbor node output (queue-style stream)
