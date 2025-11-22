@@ -49,7 +49,7 @@ module datapath #(
     output parent_equals_current,
     output reg new_random_point_valid, // valid random point
     output window_search_busy, // already looking for nearest neighbor
-    output nearest_neighbor_found,
+    output reg nearest_neighbor_found,
     
     // Control -> dpath
     input init_state,
@@ -306,6 +306,8 @@ endfunction
         end
     end
 
+    // TODO: NEED TO COMPUTE NEW POINT LOCATION AND SEND NEW POINT TO SYSTOLIC ARRAY
+    
     always @( posedge clk ) begin
         if (reset) begin
             best_dist  <= {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
@@ -315,9 +317,12 @@ endfunction
             nearest_neighbor_x <= {COORDINATE_WIDTH{1'b0}};
             nearest_neighbor_y <= {COORDINATE_WIDTH{1'b0}};
             nearest_neighbor_index <= {OUTERMOST_ITER_BITS{1'b0}};
+            nearest_neighbor_found <= 1'b0;
         end 
         else begin
-            if (search_neighbor==1'b1) begin           
+            nearest_neighbor_found <= 1'b0;
+            if (search_neighbor==1'b1) begin     
+                nearest_neighbor_found <= 1'b1;      
                 nearest_neighbor_x <= best_x;
                 nearest_neighbor_y <= best_y;
                 nearest_neighbor_index <= best_index;
