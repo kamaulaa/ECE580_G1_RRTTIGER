@@ -39,19 +39,22 @@ module core_ctrl
     // output reg [N_SQUARED-1:0] inner_loop_counter,
     output reg generate_req, // to random point generator module
     output reg window_search_start, // to window search module 
-    output reg search_neighbor // signal to search neighbor from random generated point 
+    output reg search_neighbor, // signal to search neighbor from random generated point 
+    output reg check_collision // signal to start collision checking module
 );
 
 // Define states
 localparam INIT = 4'b0000;
 localparam OUTERMOST_LOOP_CHECK = 4'b0001;
 localparam GENERATE_RANDOM_POINT = 4'b0010;
-localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0011;
-localparam DRAIN_ARR = 4'b0100;
-localparam ADD_EDGE = 4'b0101;
-localparam FAILURE = 4'b0110;
-localparam TRACEBACK = 4'b0111;
-localparam SUCCESS = 4'b1000;
+localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
+localparam CHECK_COLLISION = 4'b0100;
+localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
+localparam DRAIN_ARR = 4'b0110;
+localparam ADD_EDGE = 4'b0111;
+localparam FAILURE = 4'b1000;
+localparam TRACEBACK = 4'b1001;
+localparam SUCCESS = 4'b1010;
 
 reg [N_SQUARED-1:0] outermost_loop_counter = {OUTERMOST_ITER_MAX{1'b0}}; 
 wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -117,6 +120,7 @@ always @ (*) begin
         //     end
         //     // Set any relevant output signals to the datapath
         // end
+
         GENERATE_RANDOM_POINT: begin
             // Decide next state
             if (new_random_point_valid == 1'b1) begin // new random point generated 
@@ -132,18 +136,27 @@ always @ (*) begin
             // Set any relevant output signals to the datapath
         end
 
+        // there will always be a nearest neighbor
+        // neeed to edit after confirming combinational behavior 
+        // new point should be computed here too 
         SEARCH_NEAREST_NEIGHBOR: begin
             if (nearest_neighbor_found == 1'b1) begin
                 search_neighbor <= 1'b0;
                 next_state <= CHECK_COLLISION; 
             end
-            else begin
-                next_state <= SEARCH_NEAREST_NEIGHBOR;
-            end
         end
 
-        // TODO: new state for collision check and adding new point that is delta q step from neighbor node?
-        // this is also where node will be added to occupancy array alongside its parent points (nearest neighbor)
+        // check collision of new node with obstacles via systolic array
+        // this is also where node will be added to occupancy array + parent node (nearest neighbor)
+        // if collision, new ndde is
+        CHECK_COLLISION: begin
+            if (point_hit == 1'b1) begin
+                next_state <= OUTERMOST_LOOP_CHECK;
+            end
+            else begin
+                next_state <= ADD_EDGE;
+            end
+        end
 
         // TODO: this should be now after systolic array collision detection
         CHECK_POINTS_IN_SQUARE_RADIUS: begin
