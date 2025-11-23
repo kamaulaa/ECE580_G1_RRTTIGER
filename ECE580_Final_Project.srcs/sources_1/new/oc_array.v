@@ -31,7 +31,7 @@ module oc_array #(
     // valid input signal - high when we have both valid random point and neighbor found
     input wire valid_in,
    
-    output reg valid_out,   // does the systolic array have ANY valid data?
+    output reg valid_out,  // does the systolic array have ANY valid data?
     output reg valid_pair, // last pair passes all obstacles
     
     // what is the valid output pair (from last PE) --- only store to this if the last PE is VALID

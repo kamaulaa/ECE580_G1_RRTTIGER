@@ -1,17 +1,11 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
+
 // Create Date: 11/18/2025 09:05:34 PM
 // Design Name: 
 // Module Name: datapath
 // Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
+
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -20,6 +14,7 @@ module datapath #(
     parameter NUM_PE = 10,
     parameter N = 1024,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
+    parameter N_BITS = 10, // log2(N)
     parameter OUTERMOST_ITER_MAX = 1024, // number of points that can be generated & stored until failure
     parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
     parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
@@ -49,7 +44,7 @@ module datapath #(
     output parent_equals_current,
     output reg new_random_point_valid, // valid random point
     output window_search_busy, // already looking for nearest neighbor
-    output reg new_point_created,
+    output done_with_search_nearest_neighbor,
     
     // Control -> dpath
     input init_state,
@@ -57,7 +52,9 @@ module datapath #(
     input outer_loop_check_state,
     input generate_req, // to random point generator module
     input window_search_start, // to window search module 
-    input search_neighbor // signal to search neighbor from random generated point
+    input search_neighbor, // signal to search neighbor from random generated point
+    input entering_search_nearest_neighbor,
+    input add_new_point_q
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -66,7 +63,6 @@ module datapath #(
 // Random point registers
 reg [COORDINATE_WIDTH-1:0] x_rand; // register that holds the output of the random number generator 
 reg [COORDINATE_WIDTH-1:0] y_rand; 
-
 
 // Minimum cost point registers
 reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of radius/window search
@@ -160,13 +156,14 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .NUM_PE(NUM_PE)) pe_array (
 
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
+
 wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q < goal_top_bound) && (systolic_val_y1_q > goal_bottom_bound);
 assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_found if we reach goal AND connection is collision-free
 
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
 
-assign done_draining = ~(nb_found || systolic_valid_out || systolic_valid_pair); // not sure if nb_found is correct here to replace rd_fifo
+assign done_draining = ~(valid_in || systolic_valid_out || systolic_valid_pair); // TODO: not finished
 
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
@@ -186,6 +183,7 @@ localparam Y_LSB = PARENT_IDX_LSB - COORDINATE_WIDTH;
 localparam X_MSB = Y_LSB -1;
 localparam X_LSB = 0; // Y_LSB - COORDINATE_WIDTH;
 
+// TODO make sure that on reset/initialization, the starting point is put in the occupied points array and the occupancy status grid
 reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1]; // array to store points in first-come order
 reg [OUTERMOST_ITER_BITS-1:0] occupied_array_idx; // counts number of occupied points stored for array indexing
 reg [N_SQUARED-1:0] occupancy_status_grid; // grid like representation of occupancy
@@ -196,12 +194,11 @@ reg [N_SQUARED-1:0] occupancy_status_grid; // grid like representation of occupa
 // wire [OUTERMOST_ITER_BITS-1:0] parent_index = occupied_points_array[occupied_array_idx][PARENT_IDX_MSB:PARENT_IDX_LSB];
 
 // compute flattened address : y * N + x
-// TODO may need to change to bit shifting instead of multiplication 
 function [N_SQUARED-1:0] idx;
     input [COORDINATE_WIDTH-1:0] x_coord;
     input [COORDINATE_WIDTH-1:0] y_coord;
     begin
-        idx = y_coord * N + x_coord;
+        idx = (y_coord << N_BITS) + x_coord;
     end
 endfunction
 
@@ -225,7 +222,7 @@ endfunction
     );
 
     // check if generated random point already exists
-    always @(*) begin
+    always @(*) begin // TODO: might need to turn this into a multi-cycle comparison instead of doing it in one cycle
         points_already_exists = 1'b0; // default to invalid
         for (integer i = 0; i < occupied_array_idx; i = i + 1) begin
             points_already_exists = points_already_exists || ((occupied_points_array[i][X_MSB : X_LSB] == x_rand_wire) 
@@ -252,89 +249,72 @@ endfunction
 ////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
-// NEARBOR NEIGHBOR SEARCH 
+// NEARBOR NEIGHBOR SEARCH
 // search across all existing points for nearest point to randomly generated point 
 
-    reg [COORDINATE_WIDTH-1:0] x_i, y_i;
-    reg [COORDINATE_WIDTH:0] dx, dy; // |x1-x2|, |y1-y2|
-    reg [COORDINATE_WIDTH*2+1:0] distance; // dx^2 + dy^2
-    reg [COORDINATE_WIDTH-1:0] best_x, best_y;
-    reg [OUTERMOST_ITER_BITS-1:0] best_index;
-    reg [COORDINATE_WIDTH*2+1:0] best_dist;
-
-    reg [COORDINATE_WIDTH:0] nearest_neighbor_x;
-    reg [COORDINATE_WIDTH:0] nearest_neighbor_y;
-    reg [OUTERMOST_ITER_BITS-1:0] nearest_neighbor_index;
+    reg [OUTERMOST_ITER_BITS-1:0] new_point_parent_index;
+    reg [COORDINATE_WIDTH*2+1:0] new_point_parent_dist;
 
     localparam[1:0] tau_denom_bits = 2'b11; // 2^3 = 8 for bit shifting division
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
+    
+    reg [OUTERMOST_ITER_BITS-1:0] occupied_array_current_idx;
+    
+    // Need to tell the controller if we can stop searching
+    assign done_with_search_nearest_neighbor = occupied_array_current_idx == occupied_array_idx;
+    // Do the distance as combinational logic
+    wire [COORDINATE_WIDTH-1:0] dx = x_rand >= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] ? x_rand - occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] : occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] - x_rand;
+    wire [COORDINATE_WIDTH-1:0] dy = y_rand >= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] ? y_rand - occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] : occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] - y_rand;
+    wire [COORDINATE_WIDTH*2+1:0] distance = dx*dx + dy*dy;
+    
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (3'b111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (3'b111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
 
-    // combinational logic done in 1 cycle in FPGA feasible?
-    always @(*) begin
-        best_dist  = {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
-        best_x     = {COORDINATE_WIDTH{1'b0}};
-        best_y     = {COORDINATE_WIDTH{1'b0}};
-        best_index = {OUTERMOST_ITER_BITS{1'b0}};
-
-        if (search_neighbor==1'b1 && (occupied_array_idx != 0)) begin
-            for (i = 0; i < occupied_array_idx; i = i + 1) begin
-                x_i = occupied_points_array[i][X_MSB : X_LSB];
-                y_i = occupied_points_array[i][Y_MSB : Y_LSB];
-
-                // dx = |x_rand - x_i|
-                if (x_rand >= x_i)
-                    dx = x_rand - x_i;
-                else
-                    dx = x_i - x_rand;
-                // dy = |y_rand - y_i|
-                if (y_rand >= y_i)
-                    dy = y_rand - y_i;
-                else
-                    dy = y_i - y_rand;
-
-                // squared euclidean distance
-                distance = dx*dx + dy*dy;
-                // keep smallest distance across all points compared
-                if (distance < best_dist) begin
-                    best_dist  = distance;
-                    best_x     = x_i;
-                    best_y     = y_i;
-                    best_index = i[OUTERMOST_ITER_BITS-1:0];  // cast integer → index width
-                end
-            end
-        end
-    end
+    localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
     always @( posedge clk ) begin
         if (reset) begin
-            best_dist  <= {COORDINATE_WIDTH*2+1{1'b1}}; // max distance to start comparison
-            best_x     <= {COORDINATE_WIDTH{1'b0}};
-            best_y     <= {COORDINATE_WIDTH{1'b0}};
-            best_index <= {OUTERMOST_ITER_BITS{1'b0}};
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
             new_point_y <= {COORDINATE_WIDTH{1'b0}};
             new_point_parent_x <= {COORDINATE_WIDTH{1'b0}};
             new_point_parent_y <= {COORDINATE_WIDTH{1'b0}};
-            new_point_created <= 1'b0;
-        end 
-        else begin
-            new_point_created <= 1'b0;
-            if (search_neighbor==1'b1) begin     
-                new_point_created <= 1'b1;      
-                nearest_neighbor_index <= best_index;
-                new_point_parent_x <= best_x;
-                new_point_parent_y <= best_y;
-
-                // LAUREN TODO: STEERING LOGIC compute new point location 
-                // compute new point that is delta q step from best nearest neighbor
-                // need to also compute distance between new point and nearest neighbor
-                // this distance should be stored as a reg so kamaula can use it for cost calculation
-                new_point_x = (best_x >> tau_denom_bits) + ((x_rand - best_x) >> tau_denom_bits); 
-                new_point_y = (best_y >> tau_denom_bits) + ((y_rand - best_y) >> tau_denom_bits); 
+            occupied_array_current_idx <= 0;
+        end else begin
+            if ( entering_search_nearest_neighbor == 1'b1) begin
+                // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
+                new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+                new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
+                new_point_parent_index <= occupied_array_current_idx;
+                new_point_parent_dist <= distance;   
+                occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
+            end else if ( search_neighbor == 1'b1 ) begin // We'll go here if we aren't done with the search but it's not the first time
+                if (distance < new_point_parent_dist) begin
+                    new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+                    new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
+                    new_point_parent_index <= occupied_array_current_idx;
+                    new_point_parent_dist <= distance;
+                end
+                occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
+            end else if ( add_new_point_q == 1'b1 ) begin
+                // when adding a new point what needs to be recorded? the coordinates of the new point but also the parents?              
+                if ( x_rand > new_point_parent_x && y_rand < new_point_parent_y ) begin // New point in quad 1
+                    new_point_x <= (TWO_CONSTANT + new_point_parent_x) > N ? N : potential_new_point_x < (TWO_CONSTANT + new_point_parent_x) ? (TWO_CONSTANT + new_point_parent_x) : potential_new_point_x;
+                    new_point_y <= (new_point_parent_y - TWO_CONSTANT) < 0 ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y; 
+                end else if ( x_rand < new_point_parent_x && y_rand < new_point_parent_y ) begin // New point in quad 2
+                    new_point_x <= (new_point_parent_x - TWO_CONSTANT) < 0 ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
+                    new_point_y <= (new_point_parent_y - TWO_CONSTANT) < 0 ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y;                       
+                end else if ( x_rand < new_point_parent_x && y_rand > new_point_parent_y ) begin // New point in quad 3
+                    new_point_x <= (new_point_parent_x - TWO_CONSTANT) < 0 ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
+                    new_point_y <= (TWO_CONSTANT + new_point_parent_y) > N ? N : potential_new_point_y < (TWO_CONSTANT + new_point_parent_y) ? (TWO_CONSTANT + new_point_parent_y): potential_new_point_y;          
+                end else if ( x_rand > new_point_parent_x && y_rand > new_point_parent_y ) begin // New point in quad 4
+                    new_point_x <= (TWO_CONSTANT + new_point_parent_x) > N ? N : potential_new_point_x < (TWO_CONSTANT + new_point_parent_x) ? (TWO_CONSTANT + new_point_parent_x) : potential_new_point_x;
+                    new_point_y <= (TWO_CONSTANT + new_point_parent_y) > N ? N : potential_new_point_y < (TWO_CONSTANT + new_point_parent_y) ? (TWO_CONSTANT + new_point_parent_y): potential_new_point_y;         
+                end          
             end
         end
     end
+
 ////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
