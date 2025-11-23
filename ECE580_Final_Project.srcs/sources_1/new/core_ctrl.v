@@ -31,6 +31,7 @@ module core_ctrl
     input new_random_point_valid,
     input window_search_busy,
     input new_point_created,
+    input done_with_search_nearest_neighbor,
     
     // Need output control signals to the datapath
     output init_state,
@@ -40,7 +41,9 @@ module core_ctrl
     output reg generate_req, // to random point generator module
     output reg window_search_start, // to window search module 
     output reg search_neighbor, // signal to search neighbor from random generated point 
-    output reg check_collision // signal to start collision checking module
+    output reg check_collision, // signal to start collision checking module
+    output reg entering_search_nearest_neighbor,
+    output reg add_new_point_q
 );
 
     // Define states
@@ -55,6 +58,7 @@ module core_ctrl
     localparam FAILURE = 4'b1000;
     localparam TRACEBACK = 4'b1001;
     localparam SUCCESS = 4'b1010;
+    localparam ADD_NEW_POINT_Q = 4'b1011;
 
     reg [N_SQUARED-1:0] outermost_loop_counter = {OUTERMOST_ITER_MAX{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -108,27 +112,13 @@ module core_ctrl
                 end
             end
 
-            // GENERATE_RANDOM_POINT: begin
-            //     // Decide next state
-            //     if (new_random_point_valid == 1'b1) begin // new random point generated 
-            //         next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-            //         generate_req <= 1'b0;
-            //         window_search_start <= 1'b1; // start neighbor search
-            //     end
-            //     else begin // random point generated is an already existing point
-            //         next_state <= GENERATE_RANDOM_POINT;
-            //         generate_req <= 1'b1;
-            //     end
-            //     // Set any relevant output signals to the datapath
-            // end
-
             GENERATE_RANDOM_POINT: begin
                 // Decide next state
                 if (new_random_point_valid == 1'b1) begin // new random point generated 
                     next_state <= SEARCH_NEAREST_NEIGHBOR;
                     generate_req <= 1'b0;
                     search_neighbor <= 1'b1;
-                    // window_search_start <= 1'b1; // start neighbor search
+                    entering_search_nearest_neighbor <= 1'b1;
                 end
                 else begin // random point generated is an already existing point
                     next_state <= GENERATE_RANDOM_POINT;
@@ -138,12 +128,22 @@ module core_ctrl
             end
 
             // there will always be a nearest neighbor
-            // new point should be computed here too 
             SEARCH_NEAREST_NEIGHBOR: begin
-                if (new_point_created == 1'b1) begin
+                if (done_with_search_nearest_neighbor == 1'b1) begin
                     search_neighbor <= 1'b0;
-                    next_state <= CHECK_COLLISION; 
+                    entering_search_nearest_neighbor <= 1'b0;
+                    add_new_point_q <= 1'b1;
+                    next_state <= ADD_NEW_POINT_Q; 
+                end else begin
+                    entering_search_nearest_neighbor <= 1'b0;
+                    next_state <= SEARCH_NEAREST_NEIGHBOR;
                 end
+            end
+
+            // new point should be computed here too 
+            ADD_NEW_POINT_Q: begin
+                next_state <= CHECK_COLLISION;
+                add_new_point_q <= 1'b0;
             end
 
             // check collision of new node with obstacles via systolic array
@@ -152,9 +152,11 @@ module core_ctrl
             CHECK_COLLISION: begin
                 if (point_hit == 1'b1) begin
                     next_state <= GENERATE_RANDOM_POINT;
+                    generate_req <= 1'b1;
                 end
                 else begin
                     next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
+                    window_search_start <= 1'b1;
                 end
             end
 
