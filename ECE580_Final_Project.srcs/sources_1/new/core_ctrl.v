@@ -25,25 +25,28 @@ module core_ctrl
     
     // Inputs from the datapath
     input path_found,
-    input point_hit,
+    input new_point_q_collided,
     input done_draining,
     input parent_equals_current,
-    input new_random_point_valid,
+    input random_point_already_exists,
     input window_search_busy,
     input new_point_created,
     input done_with_search_nearest_neighbor,
+    input done_evaluating_new_random_point,
+    input done_detecting_new_point_q_collision,
     
     // Need output control signals to the datapath
-    output init_state,
-    output add_edge_state,
-    output outer_loop_check_state,
-    // output reg [N_SQUARED-1:0] inner_loop_counter,
     output reg generate_req, // to random point generator module
     output reg window_search_start, // to window search module 
     output reg search_neighbor, // signal to search neighbor from random generated point 
-    output reg check_collision, // signal to start collision checking module
     output reg entering_search_nearest_neighbor,
-    output reg add_new_point_q
+    output reg add_new_point_q,
+    output reg eval_random_point,
+    output reg generate_random_point,
+    output reg entering_check_new_point_q_collision,
+    output reg check_points_in_square_radius,
+    output reg drain_arr
+    
 );
 
     // Define states
@@ -51,7 +54,7 @@ module core_ctrl
     localparam OUTERMOST_LOOP_CHECK = 4'b0001;
     localparam GENERATE_RANDOM_POINT = 4'b0010;
     localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
-    localparam CHECK_COLLISION = 4'b0100;
+    localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;
     localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
     localparam DRAIN_ARR = 4'b0110;
     localparam ADD_EDGE = 4'b0111;
@@ -59,6 +62,7 @@ module core_ctrl
     localparam TRACEBACK = 4'b1001;
     localparam SUCCESS = 4'b1010;
     localparam ADD_NEW_POINT_Q = 4'b1011;
+    localparam EVAL_RANDOM_POINT = 4'b1100;
 
     reg [N_SQUARED-1:0] outermost_loop_counter = {OUTERMOST_ITER_MAX{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -78,53 +82,47 @@ module core_ctrl
     always @ (*) begin
         case (state)
             INIT : begin
-                // Decide next state
                 next_state <= OUTERMOST_LOOP_CHECK;
-                
-                // TODO: Set any relevant output signals to the datapath
-                // vertices_reset <= 1'b1; // reset the regs holding the points
-                // edges_reset <= 1'b1; // reset the regs holding the edges
-                
             end
 
             // iterate until path is found or max iterations limit reached
             OUTERMOST_LOOP_CHECK: begin
                 // This means we still have attempts left at finding a path
                 if ( outermost_loop_check == 1'b1) begin // HAN: check if in neighbot searching loop?
-                    // Decide next state
                     next_state <= GENERATE_RANDOM_POINT;
                     generate_req <= 1'b1; // request new random point
-                    
-                    // Set any relevant output signals to the datapath
-                    // not sure what we need here yet
                 end
                 else begin // This means we either found a path or ran out of iteration attempts
-                    // Decide next state
                     if ( path_found ) begin // We got to the end because we successfully found a path
-                        next_state <= SUCCESS;
+                        next_state <= TRACEBACK;
                     end
                     else begin // We got to the end because we ran out of iteration attempts
                         next_state <= FAILURE;
-                    end
-                    
-                    // Set any relevant output signals to the datapath
-                    // not sure what we need here yet                
+                    end             
                 end
             end
 
             GENERATE_RANDOM_POINT: begin
-                // Decide next state
-                if (new_random_point_valid == 1'b1) begin // new random point generated 
+                // always go to eval the point
+                next_state <= EVAL_RANDOM_POINT;
+                generate_req <= 1'b0; // make sure this is a 0 to prevent the random point from being overwritten as we check it
+                eval_random_point <= 1'b1;
+            end
+            
+            EVAL_RANDOM_POINT: begin
+                if ( done_evaluating_new_random_point == 1'b0 ) begin
+                    // stay evaluating
+                    next_state <= EVAL_RANDOM_POINT;
+                end else if ( random_point_already_exists == 1'b0 ) begin
                     next_state <= SEARCH_NEAREST_NEIGHBOR;
-                    generate_req <= 1'b0;
                     search_neighbor <= 1'b1;
                     entering_search_nearest_neighbor <= 1'b1;
-                end
-                else begin // random point generated is an already existing point
+                    eval_random_point <= 1'b0;
+                end else begin // random point generated is an already existing point
                     next_state <= GENERATE_RANDOM_POINT;
                     generate_req <= 1'b1;
+                    eval_random_point <= 1'b0;
                 end
-                // Set any relevant output signals to the datapath
             end
 
             // there will always be a nearest neighbor
@@ -142,21 +140,25 @@ module core_ctrl
 
             // new point should be computed here too 
             ADD_NEW_POINT_Q: begin
-                next_state <= CHECK_COLLISION;
+                next_state <= CHECK_NEW_POINT_Q_COLLISION;
                 add_new_point_q <= 1'b0;
+                entering_check_new_point_q_collision <= 1'b1; // turn this on for only 1 cycle to let the systolic array take in the new point q and immediately not take any more input
             end
 
-            // check collision of new node with obstacles via systolic array
-            // this is also where node will be added to occupancy array + parent node (nearest neighbor)
-            // if collision occurs, new ndde is not added and new random point is generated 
-            CHECK_COLLISION: begin
-                if (point_hit == 1'b1) begin
+            // check collision of new point q with obstacles via systolic array
+            // this is also where new point q will be added to occupancy array, occupancy grid, and its parent node (the nearest neighbor) will be added to the occupancy array
+            // if collision occurs, new point q is not added and new random point is generated 
+            CHECK_NEW_POINT_Q_COLLISION: begin
+                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
+                    next_state <= CHECK_NEW_POINT_Q_COLLISION;
+                    entering_check_new_point_q_collision <= 1'b0;
+                end else if (new_point_q_collided == 1'b1) begin
                     next_state <= GENERATE_RANDOM_POINT;
                     generate_req <= 1'b1;
-                end
-                else begin
+                end else begin
                     next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
                     window_search_start <= 1'b1;
+                    check_points_in_square_radius <= 1'b1;
                 end
             end
 
@@ -165,13 +167,12 @@ module core_ctrl
                 if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
                     next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
                     window_search_start <= 1'b0; 
-                end
-                else if (window_search_busy == 1'b1) begin
+                end else if (window_search_busy == 1'b1) begin
                     next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-                end
-                //  KAMUALA TODO: update this logic
-                else begin 
+                end else begin //  KAMUALA TODO: update this logic
+                    check_points_in_square_radius <= 1'b0;
                     if (done_draining == 1'b1) begin
+                        drain_arr <= 1'b1;
                         next_state <= DRAIN_ARR;
                     end else begin
                         next_state <= ADD_EDGE;
@@ -181,14 +182,15 @@ module core_ctrl
 
             // KAMUALA TODO: combine DRAIN_ARR and ADD_EDGE states?
             // compare costs of neighbors found in window radius and add edge to best one
-            // this is the rewiring step
             DRAIN_ARR: begin
                 if (done_draining == 1'b1) begin
+                    drain_arr <= 1'b0;
                     next_state <= ADD_EDGE;
                 end else begin
                     next_state <= DRAIN_ARR;
                 end
             end
+            
             ADD_EDGE: begin
                 next_state <= OUTERMOST_LOOP_CHECK;
                 outermost_loop_counter <= outermost_loop_counter + 1'b1;
@@ -199,7 +201,6 @@ module core_ctrl
                 // thus this should be sufficient to keep us in the next state
             end
 
-            // LAUREN TODO: incorporate this state if still needed 
             TRACEBACK: begin
                 if (parent_equals_current == 1'b1) begin
                     next_state <= SUCCESS;

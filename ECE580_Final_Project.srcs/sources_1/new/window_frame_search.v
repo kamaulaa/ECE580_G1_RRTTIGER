@@ -17,23 +17,24 @@ module window_frame_search
     parameter OUTERMOST_ITER_MAX = 1024, // adjustable limit
     parameter ARRAY_WIDTH = COORDINATE_WIDTH*4 // occupancy status array width (1 bit per cell)
 )(
-    input                       clk,
-    input                       rst,
+    input                               clk,
+    input                               rst,
 
     // control
-    input                      search_start,  // pulse to start a search
-    input [COORDINATE_WIDTH-1:0]         node_x,
-    input [COORDINATE_WIDTH-1:0]         node_y,
-    input [COORDINATE_WIDTH-1:0]         window_radius, // search window radius 
+    input                               search_start,  // pulse to start a search
+    input [COORDINATE_WIDTH-1:0]        node_x,
+    input [COORDINATE_WIDTH-1:0]        node_y,
+    input [COORDINATE_WIDTH-1:0]        window_radius, // search window radius 
+    
     // TODO NEED UNROLLED IMPLEMENTATION FOR THIS
-    input [N_SQUARED-1:0]    occupancy_status_grid, // occupancy status grid
-    output reg                 neighbor_search_busy, // window loop status
+    input [N_SQUARED-1:0]               occupancy_status_grid, // occupancy status grid
+    output reg                          neighbor_search_busy, // window loop status
     
     // detected neighbor node output (queue-style stream)
-    // input                      nb_ready, // neighbor ready?
-    output reg                 nb_found, // neighbor found 
-    output reg [COORDINATE_WIDTH-1:0]    nb_x,    
-    output reg [COORDINATE_WIDTH-1:0]    nb_y
+    output reg                          nb_found, // neighbor found 
+    output reg [COORDINATE_WIDTH-1:0]   nb_x,    
+    output reg [COORDINATE_WIDTH-1:0]   nb_y,
+    output reg                          any_neighbors_found_in_window
 
 );
 

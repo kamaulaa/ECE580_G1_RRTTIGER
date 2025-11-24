@@ -12,6 +12,7 @@
 module datapath #(
     parameter COORDINATE_WIDTH = 10,
     parameter NUM_PE = 10,
+    parameter NUM_PE_WIDTH = 4, // log2(NUM_PE)
     parameter N = 1024,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
     parameter N_BITS = 10, // log2(N)
@@ -39,12 +40,14 @@ module datapath #(
     
     // Dpath -> control
     output path_found,
-    output point_hit,
+    output new_point_q_collided,
     output done_draining,
     output parent_equals_current,
-    output reg new_random_point_valid, // valid random point
+    output random_point_already_exists, // valid random point
     output window_search_busy, // already looking for nearest neighbor
     output done_with_search_nearest_neighbor,
+    output done_evaluating_new_random_point,
+    output done_detecting_new_point_q_collision,
     
     // Control -> dpath
     input init_state,
@@ -54,7 +57,12 @@ module datapath #(
     input window_search_start, // to window search module 
     input search_neighbor, // signal to search neighbor from random generated point
     input entering_search_nearest_neighbor,
-    input add_new_point_q
+    input add_new_point_q,
+    input eval_random_point,
+    input generate_random_point,
+    input entering_check_new_point_q_collision,
+    input check_points_in_square_radius,
+    input drain_arr
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -74,8 +82,9 @@ wire nb_found; // a nearest neighbor was found in the window
 wire [COORDINATE_WIDTH-1:0] nb_x; // coords of that nearest neighbor
 wire [COORDINATE_WIDTH-1:0] nb_y;
 
-// Control signals
-wire valid_in = new_random_point_valid && nb_found; // valid when we have both valid random point and neighbor
+// Systolic array control input signal
+wire valid_in =   entering_check_new_point_q_collision == 1'b1 ? 1'b1
+                : (check_points_in_square_radius == 1'b1) ? nb_found : 1'b0; // if we're in this state we know we have a valid "new point q", just need to know if there's a neighbor high in the grid at this cycle
 
 // Cost calculation signals
 wire [COST_WIDTH-1:0] rd_cost; // TODO: connect to cost memory read data for nearest neighbor location
@@ -128,30 +137,6 @@ quantization_block #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .COST_WIDTH(COST_WIDTH
 );
 
 ////////////////////////////////////////////////////////////////////////
-// OBSTACLE COLLISION DETECTION - SYSTOLIC ARRAY
-
-// obstacle detection systolic array - constantly being fed the newly calculated ranom points and their nearest neighbors
-oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .NUM_PE(NUM_PE)) pe_array (
-            .clk(clk),
-            .rst(reset),
-            .obs_left(obs_left),
-            .obs_right(obs_right),
-            .obs_top(obs_top),
-            .obs_bottom(obs_bottom),
-            .r_x1(x_rand),
-            .r_y1(y_rand),
-            .n_x2(nb_x),
-            .n_y2(nb_y),
-            .valid_in(valid_in),
-            .valid_out(systolic_valid_out),
-            .valid_pair(systolic_valid_pair),
-            .val_x1(systolic_val_x1),
-            .val_y1(systolic_val_y1), 
-            .val_x2(systolic_val_x2),
-            .val_y2(systolic_val_y2)
-        );
-
-////////////////////////////////////////////////////////////////////////
 // GOAL CHECK LOGIC
 
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
@@ -163,7 +148,7 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
 
-assign done_draining = ~(valid_in || systolic_valid_out || systolic_valid_pair); // TODO: not finished
+assign done_draining = ~(systolic_valid_out); // TODO: not finished
 
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
@@ -175,13 +160,15 @@ assign done_draining = ~(valid_in || systolic_valid_out || systolic_valid_pair);
 // NEED STARTING POINT TO BE FIRST POINT ADDED TO OCCUPANCY STATUS
 
 // array to store points in grid and parent index
-localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2; // parent_index + x_coord + y_coord 
+localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2 + COST_WIDTH; // parent_index + x_coord + y_coord + cosr
 localparam PARENT_IDX_MSB = ARRAY_WIDTH - 1;
 localparam PARENT_IDX_LSB = ARRAY_WIDTH - OUTERMOST_ITER_BITS;
 localparam Y_MSB = PARENT_IDX_LSB - 1;
 localparam Y_LSB = PARENT_IDX_LSB - COORDINATE_WIDTH;
 localparam X_MSB = Y_LSB -1;
-localparam X_LSB = 0; // Y_LSB - COORDINATE_WIDTH;
+localparam X_LSB = Y_LSB - COORDINATE_WIDTH;
+localparam COST_MSB = X_LSB -1;
+localparam COST_LSB = 0;
 
 // TODO make sure that on reset/initialization, the starting point is put in the occupied points array and the occupancy status grid
 reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1]; // array to store points in first-come order
@@ -221,31 +208,30 @@ endfunction
         .random_point_y       (y_rand_wire)
     );
 
-    // check if generated random point already exists
-    always @(*) begin // TODO: might need to turn this into a multi-cycle comparison instead of doing it in one cycle
-        points_already_exists = 1'b0; // default to invalid
-        for (integer i = 0; i < occupied_array_idx; i = i + 1) begin
-            points_already_exists = points_already_exists || ((occupied_points_array[i][X_MSB : X_LSB] == x_rand_wire) 
-            && (occupied_points_array[i][Y_MSB : Y_LSB] == y_rand_wire));
-        end
-    end
+    reg [OUTERMOST_ITER_BITS-1:0] occupied_array_current_idx;
+    wire current_array_entry_same_as_random = (occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire) && (occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire); 
+    assign done_evaluating_random_point = eval_random_point == 1'b1 && (current_array_entry_same_as_random || (occupied_array_current_idx == occupied_array_idx));
+    assign random_point_already_exists = current_array_entry_same_as_random;
 
-    // Update x_rand, y_rand
+    // check if generated random point already exists
     always @( posedge clk ) begin
-        if (reset) begin
+        if ( reset == 1'b1) begin
             x_rand <= {COORDINATE_WIDTH{1'b0}};
             y_rand <= {COORDINATE_WIDTH{1'b0}};
-            new_random_point_valid <= 1'b0;
-        end 
-        else begin
-            new_random_point_valid <= 1'b0; // default
-            if (generate_req==1'b1 && points_already_exists==1'b0) begin           
+        end else begin
+            if ( generate_req == 1'b1 ) begin
+                occupied_array_current_idx <= 0;
+            end
+            if ( eval_random_point == 1'b1 ) begin
+                occupied_array_current_idx <= done_evaluating_random_point == 1'b1 ? 1'b0 : occupied_array_current_idx + 1;
+            end
+            if ( done_evaluating_random_point == 1'b1 && current_array_entry_same_as_random == 1'b0) begin
                 x_rand <= x_rand_wire;
                 y_rand <= y_rand_wire;
-                new_random_point_valid <= 1'b1;
             end
         end
     end
+       
 ////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
@@ -255,12 +241,10 @@ endfunction
     reg [OUTERMOST_ITER_BITS-1:0] new_point_parent_index;
     reg [COORDINATE_WIDTH*2+1:0] new_point_parent_dist;
 
-    localparam[1:0] tau_denom_bits = 2'b11; // 2^3 = 8 for bit shifting division
+    localparam[1:0] tau_denom_bits = 3'b101; // 2^5 = 32 for bit shifting division
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
-    
-    reg [OUTERMOST_ITER_BITS-1:0] occupied_array_current_idx;
-    
+        
     // Need to tell the controller if we can stop searching
     assign done_with_search_nearest_neighbor = occupied_array_current_idx == occupied_array_idx;
     // Do the distance as combinational logic
@@ -268,8 +252,8 @@ endfunction
     wire [COORDINATE_WIDTH-1:0] dy = y_rand >= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] ? y_rand - occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] : occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] - y_rand;
     wire [COORDINATE_WIDTH*2+1:0] distance = dx*dx + dy*dy;
     
-    wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (3'b111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
-    wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (3'b111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
@@ -314,6 +298,66 @@ endfunction
             end
         end
     end
+    
+////////////////////////////////////////////////////////////////////////
+// OBSTACLE COLLISION DETECTION - SYSTOLIC ARRAY
+
+// obstacle detection systolic array - constantly being fed the newly calculated random points and their nearest neighbors
+
+// note that when we use the array to check whether new point q hit anything, we need to have the input muxed
+wire oc_array_n_x2_input = (entering_check_new_point_q_collision) ? new_point_parent_x : nb_x;
+wire oc_array_n_y2_input = (entering_check_new_point_q_collision) ? new_point_parent_y : nb_y;
+
+oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .NUM_PE(NUM_PE)) pe_array (
+            .clk(clk),
+            .rst(reset),
+            .obs_left(obs_left), // Shouldn't each PE be loaded with its own obstacle in the init stage?
+            .obs_right(obs_right),
+            .obs_top(obs_top),
+            .obs_bottom(obs_bottom),
+            .r_x1(new_point_x), // new point x and new point y are the replacements for x rand and y rand
+            .r_y1(new_point_y),
+            .n_x2(oc_array_n_x2_input),
+            .n_y2(oc_array_n_y2_input),
+            .valid_in(valid_in),
+            .valid_out(systolic_valid_out),
+            .valid_pair(systolic_valid_pair),
+            .val_x1(systolic_val_x1),
+            .val_y1(systolic_val_y1), 
+            .val_x2(systolic_val_x2),
+            .val_y2(systolic_val_y2)
+        );
+        
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+// CHECK NEW POINT Q COLLISION
+// TODO: are we ever checking that new point q isn't inside an obstacle?
+
+reg [NUM_PE_WIDTH-1:0] detecting_new_point_q_collision_cycle_count;
+reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
+
+assign new_point_q_collided = systolic_valid_pair;
+assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cycle_count == NUM_PE;
+
+always @( posedge clk ) begin
+    if ( reset ) begin
+        detecting_new_point_q_collision_cycle_count <= 0;
+        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
+    end else begin
+        if (done_detecting_new_point_q_collision == 1'b1) begin
+            detecting_new_point_q_collision_cycle_count <= 0;
+            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
+        end else begin    
+            if (entering_check_new_point_q_collision == 1'b1) begin // when we enter the check new point q collision state we should make sure that we set this count to 0
+                detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
+                detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b1;
+            end else if (detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle == 1'b1) begin
+                detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
+            end
+        end
+    end
+end
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -321,33 +365,37 @@ endfunction
 // NEIGHBOR SEARCH IN WINDOW FRAME
 
     // adjustable window radius
-    localparam [COORDINATE_WIDTH-1:0] WINDOW_RADIUS = {{(COORDINATE_WIDTH-3){1'b0}},3'b101}; // e.g. 5
+    localparam [COORDINATE_WIDTH-1:0] WINDOW_RADIUS = {{(COORDINATE_WIDTH-3){1'b0}},4'b1000}; // currently the window radius is 16x16
+    
+    wire any_neighbors_found_in_window;
+    // TODO: if state = check points in square radius && window search not busy && any_neighbors_found_in_window==0 then need to send signal to control to go back to outermost loop check and increment the outerloop counter
 
     // instantiate neighbor search module
     window_frame_search #(
-        .N   (N),
-        .COORDINATE_WIDTH   (COORDINATE_WIDTH),
-        .N_SQUARED (N_SQUARED),
-        .OUTERMOST_ITER_MAX (OUTERMOST_ITER_MAX),
-        .ARRAY_WIDTH (ARRAY_WIDTH)
+        .N                      (N),
+        .COORDINATE_WIDTH       (COORDINATE_WIDTH),
+        .N_SQUARED              (N_SQUARED),
+        .OUTERMOST_ITER_MAX     (OUTERMOST_ITER_MAX),
+        .ARRAY_WIDTH            (ARRAY_WIDTH)
     ) find_neighbors (
-        .clk             (clk),
-        .rst             (reset),
+        .clk                    (clk),
+        .rst                    (reset),
 
         // control
         .window_search_start    (window_search_start),
-        .window_radius   (WINDOW_RADIUS),
-        .node_x          (x_rand),
-        .node_y          (y_rand),
-        .occupancy_status_grid (occupancy_status_grid),
-        .window_search_busy (window_search_busy),
+        .window_radius          (WINDOW_RADIUS),
+        .node_x                 (new_point_x),
+        .node_y                 (new_point_y),
+        .occupancy_status_grid  (occupancy_status_grid),
+        .window_search_busy     (window_search_busy),
 
         // detected neighbor node output (queue-style stream)
-        // .nb_ready        (nb_ready),
-        .nb_found        (nb_found), // what happens if we dont find a nearest neighbor for a point? we would have to discard that point and stay in generate state right?
-        .nb_x            (nb_x),
-        .nb_y            (nb_y)
+        .nb_found               (nb_found), 
+        .nb_x                   (nb_x),
+        .nb_y                   (nb_y),
+        .any_neighbors_found_in_window (any_neighbors_found_in_window)
     );
+    
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -382,5 +430,11 @@ always @( posedge clk) begin
         end
     end 
 end
+
+// COST update looks something like this
+//occupied_points_array[occupied_array_idx++][COST_MSB:COST_LSB] = cmin;
+//occupied_points_array[occupied_array_idx++][X_MSB:X_LSB] = new_point_x;
+//occupied_points_array[occupied_array_idx++][Y_MSB:Y_LSB] = new_point_y;
+//occupied_points_array[occupied_array_idx++][PARENT_MSB:PARENT_LSB] = ????;
 
 endmodule
