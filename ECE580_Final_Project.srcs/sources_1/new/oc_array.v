@@ -31,14 +31,14 @@ module oc_array #(
     // valid input signal - high when we have both valid random point and neighbor found
     input wire valid_in,
    
-    output reg valid_out,  // does the systolic array have ANY valid data?
-    output reg valid_pair, // last pair passes all obstacles
+    output valid_out,  // does the systolic array have ANY valid data?
+    output valid_pair, // last pair passes all obstacles
     
     // what is the valid output pair (from last PE) --- only store to this if the last PE is VALID
-    output reg [COORDINATE_WIDTH-1:0]   val_x1,  //random point
-    output reg [COORDINATE_WIDTH-1:0]   val_y1,  //random point
-    output reg [COORDINATE_WIDTH-1:0]   val_x2, //nearest neighbor
-    output reg [COORDINATE_WIDTH-1:0]   val_y2  //nearest neighbor
+    output [COORDINATE_WIDTH-1:0]   val_x1,  //random point
+    output [COORDINATE_WIDTH-1:0]   val_y1,  //random point
+    output [COORDINATE_WIDTH-1:0]   val_x2, //nearest neighbor
+    output [COORDINATE_WIDTH-1:0]   val_y2  //nearest neighbor
 );
 
 // Intermediate wires to chain PEs together (NUM_PE+1 to include input and final output)
