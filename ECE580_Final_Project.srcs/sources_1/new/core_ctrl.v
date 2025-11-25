@@ -32,7 +32,7 @@ module core_ctrl
     input window_search_busy,
     input new_point_created,
     input done_with_search_nearest_neighbor,
-    input done_evaluating_new_random_point,
+    input done_evaluating_random_point,
     input done_detecting_new_point_q_collision,
     
     // Need output control signals to the datapath
@@ -88,7 +88,7 @@ module core_ctrl
             // iterate until path is found or max iterations limit reached
             OUTERMOST_LOOP_CHECK: begin
                 // This means we still have attempts left at finding a path
-                if ( outermost_loop_check == 1'b1) begin // HAN: check if in neighbot searching loop?
+                if (outermost_loop_check == 1'b1) begin 
                     next_state <= GENERATE_RANDOM_POINT;
                     generate_req <= 1'b1; // request new random point
                 end
@@ -110,7 +110,7 @@ module core_ctrl
             end
             
             EVAL_RANDOM_POINT: begin
-                if ( done_evaluating_new_random_point == 1'b0 ) begin
+                if ( done_evaluating_random_point == 1'b0 ) begin
                     // stay evaluating
                     next_state <= EVAL_RANDOM_POINT;
                 end else if ( random_point_already_exists == 1'b0 ) begin

@@ -46,7 +46,7 @@ module datapath #(
     output random_point_already_exists, // valid random point
     output window_search_busy, // already looking for nearest neighbor
     output done_with_search_nearest_neighbor,
-    output done_evaluating_new_random_point,
+    output done_evaluating_random_point,
     output done_detecting_new_point_q_collision,
     
     // Control -> dpath
@@ -160,7 +160,7 @@ assign done_draining = ~(systolic_valid_out); // TODO: not finished
 // NEED STARTING POINT TO BE FIRST POINT ADDED TO OCCUPANCY STATUS
 
 // array to store points in grid and parent index
-localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2 + COST_WIDTH; // parent_index + x_coord + y_coord + cosr
+localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2 + COST_WIDTH; // parent_index + x_coord + y_coord + cost
 localparam PARENT_IDX_MSB = ARRAY_WIDTH - 1;
 localparam PARENT_IDX_LSB = ARRAY_WIDTH - OUTERMOST_ITER_BITS;
 localparam Y_MSB = PARENT_IDX_LSB - 1;
@@ -210,7 +210,7 @@ endfunction
 
     reg [OUTERMOST_ITER_BITS-1:0] occupied_array_current_idx;
     wire current_array_entry_same_as_random = (occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire) && (occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire); 
-    assign done_evaluating_random_point = eval_random_point == 1'b1 && (current_array_entry_same_as_random || (occupied_array_current_idx == occupied_array_idx));
+    assign done_evaluating_random_point = (eval_random_point == 1'b1) && (current_array_entry_same_as_random || (occupied_array_current_idx == occupied_array_idx));
     assign random_point_already_exists = current_array_entry_same_as_random;
 
     // check if generated random point already exists
@@ -223,7 +223,7 @@ endfunction
                 occupied_array_current_idx <= 0;
             end
             if ( eval_random_point == 1'b1 ) begin
-                occupied_array_current_idx <= done_evaluating_random_point == 1'b1 ? 1'b0 : occupied_array_current_idx + 1;
+                occupied_array_current_idx <= (done_evaluating_random_point == 1'b1) ? 1'b0 : occupied_array_current_idx + 1;
             end
             if ( done_evaluating_random_point == 1'b1 && current_array_entry_same_as_random == 1'b0) begin
                 x_rand <= x_rand_wire;
@@ -231,32 +231,85 @@ endfunction
             end
         end
     end
-       
+
 ////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
 // NEARBOR NEIGHBOR SEARCH
 // search across all existing points for nearest point to randomly generated point 
 
+    localparam DIST_WIDTH = COORDINATE_WIDTH*2+2;
     reg [OUTERMOST_ITER_BITS-1:0] new_point_parent_index;
-    reg [COORDINATE_WIDTH*2+1:0] new_point_parent_dist;
+    reg [DIST_WIDTH-1:0] new_point_parent_dist;
 
-    localparam[1:0] tau_denom_bits = 3'b101; // 2^5 = 32 for bit shifting division
+    localparam[2:0] tau_denom_bits = 3'b101; // 2^5 = 32 for bit shifting division
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
         
-    // Need to tell the controller if we can stop searching
-    assign done_with_search_nearest_neighbor = occupied_array_current_idx == occupied_array_idx;
+    // Need to tell the controller if we can stop searching 
+    // NOTE: DOES THIS CHECK LAST ITERATION TOO?
+    assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx);
+
     // Do the distance as combinational logic
     wire [COORDINATE_WIDTH-1:0] dx = x_rand >= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] ? x_rand - occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] : occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] - x_rand;
     wire [COORDINATE_WIDTH-1:0] dy = y_rand >= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] ? y_rand - occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] : occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] - y_rand;
-    wire [COORDINATE_WIDTH*2+1:0] distance = dx*dx + dy*dy;
+    wire [DIST_WIDTH-1:0] distance = dx*dx + dy*dy;
+
+    // array to store indices of 10 nearest neigbors
+    // nearest neighbor with shortest distance will be used to generate new point 
+    localparam NEIGHBOR_ARRAY_WIDTH = OUTERMOST_ITER_BITS + DIST_WIDTH; // neighbor index + distance to random 
+    localparam IDX_MSB = NEIGHBOR_ARRAY_WIDTH - 1;
+    localparam IDX_LSB = DIST_WIDTH;
+    localparam DIST_MSB = IDX_LSB - 1;
+    localparam DIST_LSB = 0;
+
+    reg [NEIGHBOR_ARRAY_WIDTH-1:0] ten_nearest_neighbors [0:9]; // stores index (occupied_array_current_idx)
+    reg [OUTERMOST_ITER_BITS-1:0] nearest_neighbor_count; // nearest of the nearest neighbors 
+
+    wire [3:0] best_neighbor_idx;
+    wire [DIST_WIDTH-1:0] best_neighbor_dist;
+    wire [3:0] worst_neighbor_idx;
+    wire [DIST_WIDTH-1:0] worse_neighbor_dist;
     
+    // find best and worst neighbors among top ten neighbors 
+    always @(*) begin
+        best_neighbor_idx  = 0;
+        best_neighbor_dist = {DIST_WIDTH{1'b1}}; // max
+        worst_neighbor_idx = 0;
+        worst_neighbor_dist= {DIST_WIDTH{1'b0}}; // min
+
+        if (nearest_neighbor_count != 0) begin
+            best_neighbor_idx  = 0;
+            best_neighbor_dist = ten_nearest_neighbors[0][DIST_MSB:DIST_LSB];
+            worst_neighbor_idx = 0;
+            worst_neighbor_dist= ten_nearest_neighbors[0][DIST_MSB:DIST_LSB];
+
+            for (integer i = 1; i < nearest_neighbor_count; i = i + 1) begin
+                // find best neighbor among neighbors in ten_nearest_neighbors
+                if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] < best_neighbor_dist) begin
+                    best_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
+                    best_neighbor_idx  = i;
+                end
+                // find worst neighbor among neighbors in ten_nearest_neighbors
+                if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] > worst_neighbor_dist) begin
+                    worst_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
+                    worst_neighbor_idx  = i;
+                end
+            end
+        end
+    end
+
+    /////////////////WORKING//////////////////
+
     wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
     wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
+    // NOTE: OR SHOULD THIS BE THIS?
+    // wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*new_point_parent_x + x_rand) >> tau_denom_bits;
+    // wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*new_point_parent_y + y_rand) >> tau_denom_bits;
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
+    // NOTE: shouldn't we separate new point generation logic from here since it's a different state? (style)
     always @( posedge clk ) begin
         if (reset) begin
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
@@ -264,7 +317,24 @@ endfunction
             new_point_parent_x <= {COORDINATE_WIDTH{1'b0}};
             new_point_parent_y <= {COORDINATE_WIDTH{1'b0}};
             occupied_array_current_idx <= 0;
+            nearest_neighbor_count <= 4'b0;
+
         end else begin
+            // add first ten points into top 10 nearest neighbor array
+            if (nearest_neighbor_count < 4'd10) begin
+                ten_nearest_neighbors[nearest_neighbor_count] <= {occupied_array_current_idx, distance};
+                nearest_neighbor_count <= nearest_neighbor_count + 1'b1;
+            end
+            else begin
+                // Replace current worst if new distance is smaller
+                if (distance < ten_nearest_neighbors[worst_neighbor_idx][DIST_MSB:DIST_LSB]) begin
+                    ten_nearest_neighbors[worst_neighbor_idx] <= {occupied_array_current_idx, distance};
+                end
+            end
+
+            /////////////////WORKING////////////////// 
+            
+            // use best neighbor index to generate new point new point 
             if ( entering_search_nearest_neighbor == 1'b1) begin
                 // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
                 new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
@@ -284,12 +354,12 @@ endfunction
                 // when adding a new point what needs to be recorded? the coordinates of the new point but also the parents?              
                 if ( x_rand > new_point_parent_x && y_rand < new_point_parent_y ) begin // New point in quad 1
                     new_point_x <= (TWO_CONSTANT + new_point_parent_x) > N ? N : potential_new_point_x < (TWO_CONSTANT + new_point_parent_x) ? (TWO_CONSTANT + new_point_parent_x) : potential_new_point_x;
-                    new_point_y <= (new_point_parent_y - TWO_CONSTANT) < 0 ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y; 
+                    new_point_y <= (new_point_parent_y < TWO_CONSTANT) ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y; 
                 end else if ( x_rand < new_point_parent_x && y_rand < new_point_parent_y ) begin // New point in quad 2
-                    new_point_x <= (new_point_parent_x - TWO_CONSTANT) < 0 ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
-                    new_point_y <= (new_point_parent_y - TWO_CONSTANT) < 0 ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y;                       
+                    new_point_x <= (new_point_parent_x < TWO_CONSTANT) ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
+                    new_point_y <= (new_point_parent_y < TWO_CONSTANT) ? 0 : potential_new_point_y > (new_point_parent_y - TWO_CONSTANT) ? (new_point_parent_y - TWO_CONSTANT) : potential_new_point_y;                       
                 end else if ( x_rand < new_point_parent_x && y_rand > new_point_parent_y ) begin // New point in quad 3
-                    new_point_x <= (new_point_parent_x - TWO_CONSTANT) < 0 ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
+                    new_point_x <= (new_point_parent_x < TWO_CONSTANT) ? 0 : potential_new_point_x > (new_point_parent_x - TWO_CONSTANT) ? (new_point_parent_x - TWO_CONSTANT) : potential_new_point_x;
                     new_point_y <= (TWO_CONSTANT + new_point_parent_y) > N ? N : potential_new_point_y < (TWO_CONSTANT + new_point_parent_y) ? (TWO_CONSTANT + new_point_parent_y): potential_new_point_y;          
                 end else if ( x_rand > new_point_parent_x && y_rand > new_point_parent_y ) begin // New point in quad 4
                     new_point_x <= (TWO_CONSTANT + new_point_parent_x) > N ? N : potential_new_point_x < (TWO_CONSTANT + new_point_parent_x) ? (TWO_CONSTANT + new_point_parent_x) : potential_new_point_x;
