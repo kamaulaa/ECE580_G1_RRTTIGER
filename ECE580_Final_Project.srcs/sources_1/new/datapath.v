@@ -264,42 +264,38 @@ endfunction
     localparam DIST_LSB = 0;
 
     reg [NEIGHBOR_ARRAY_WIDTH-1:0] ten_nearest_neighbors [0:9]; // stores index (occupied_array_current_idx)
-    reg [OUTERMOST_ITER_BITS-1:0] nearest_neighbor_count; // nearest of the nearest neighbors 
+    reg [3:0] nearest_neighbor_count; 
 
-    wire [3:0] best_neighbor_idx;
+    wire [3:0] best_neighbor_ten_idx; // index of top ten array 
+    wire [OUTERMOST_ITER_BITS-1:0] best_neighbor_idx; // index of full 1024 entries array
     wire [DIST_WIDTH-1:0] best_neighbor_dist;
-    wire [3:0] worst_neighbor_idx;
+    wire [3:0] worst_neighbor_ten_idx;
     wire [DIST_WIDTH-1:0] worse_neighbor_dist;
     
     // find best and worst neighbors among top ten neighbors 
     always @(*) begin
-        best_neighbor_idx  = 0;
+        best_neighbor_ten_idx  = 0;
         best_neighbor_dist = {DIST_WIDTH{1'b1}}; // max
-        worst_neighbor_idx = 0;
+        worst_neighbor_ten_idx = 0;
         worst_neighbor_dist= {DIST_WIDTH{1'b0}}; // min
 
         if (nearest_neighbor_count != 0) begin
-            best_neighbor_idx  = 0;
-            best_neighbor_dist = ten_nearest_neighbors[0][DIST_MSB:DIST_LSB];
-            worst_neighbor_idx = 0;
-            worst_neighbor_dist= ten_nearest_neighbors[0][DIST_MSB:DIST_LSB];
-
-            for (integer i = 1; i < nearest_neighbor_count; i = i + 1) begin
+            for (integer i = 0; i < nearest_neighbor_count; i = i + 1) begin
                 // find best neighbor among neighbors in ten_nearest_neighbors
                 if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] < best_neighbor_dist) begin
                     best_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
-                    best_neighbor_idx  = i;
+                    best_neighbor_ten_idx  = i;
+                    best_neighbor_idx = ten_nearest_neighbors[i][IDX_MSB:IDX_LSB];
                 end
                 // find worst neighbor among neighbors in ten_nearest_neighbors
                 if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] > worst_neighbor_dist) begin
                     worst_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
-                    worst_neighbor_idx  = i;
+                    worst_neighbor_ten_idx  = i;
                 end
             end
+            
         end
     end
-
-    /////////////////WORKING//////////////////
 
     wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
     wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
@@ -309,7 +305,7 @@ endfunction
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
-    // NOTE: shouldn't we separate new point generation logic from here since it's a different state? (style)
+    // NOTE: SHOULDNT ADD NEW POINT Q BE IN DIFFERENT BLOCK (STYLISTIC)
     always @( posedge clk ) begin
         if (reset) begin
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
@@ -323,34 +319,36 @@ endfunction
             // add first ten points into top 10 nearest neighbor array
             if (nearest_neighbor_count < 4'd10) begin
                 ten_nearest_neighbors[nearest_neighbor_count] <= {occupied_array_current_idx, distance};
-                nearest_neighbor_count <= nearest_neighbor_count + 1'b1;
+                nearest_neighbor_count <= nearest_neighbor_count + 1'b1; // max at 10
             end
             else begin
-                // Replace current worst if new distance is smaller
-                if (distance < ten_nearest_neighbors[worst_neighbor_idx][DIST_MSB:DIST_LSB]) begin
-                    ten_nearest_neighbors[worst_neighbor_idx] <= {occupied_array_current_idx, distance};
+                // replace current worst if new distance is smaller
+                if (distance < ten_nearest_neighbors[worst_neighbor_ten_idx][DIST_MSB:DIST_LSB]) begin
+                    ten_nearest_neighbors[worst_neighbor_ten_idx] <= {occupied_array_current_idx, distance};
                 end
             end
-
-            /////////////////WORKING////////////////// 
             
-            // use best neighbor index to generate new point new point 
-            if ( entering_search_nearest_neighbor == 1'b1) begin
-                // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
-                new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-                new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
-                new_point_parent_index <= occupied_array_current_idx;
-                new_point_parent_dist <= distance;   
+            if (search_neighbor == 1'b1) begin
                 occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
-            end else if ( search_neighbor == 1'b1 ) begin // We'll go here if we aren't done with the search but it's not the first time
-                if (distance < new_point_parent_dist) begin
-                    new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-                    new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
-                    new_point_parent_index <= occupied_array_current_idx;
-                    new_point_parent_dist <= distance;
-                end
-                occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
-            end else if ( add_new_point_q == 1'b1 ) begin
+            end
+
+            // use best neighbor index to generate new point new point AFTER ALL NODES HAVE BEEN TRAVERSED
+            if (done_with_search_nearest_neighbor == 1'b1 && search_neighbor == 1'b1) begin
+                // if ( entering_search_nearest_neighbor == 1'b1) begin
+                    // // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
+                    // new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+                    // new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
+                    // new_point_parent_index <= occupied_array_current_idx;
+                    // new_point_parent_dist <= distance;   
+                    // occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
+                // end 
+                new_point_parent_x <= occupied_points_array[best_neighbor_idx][X_MSB:X_LSB];
+                new_point_parent_y <= occupied_points_array[best_neighbor_idx][Y_MSB:Y_LSB];
+                new_point_parent_index <= best_neighbor_idx;
+                new_point_parent_dist <= best_neighbor_dist;
+            end
+
+            if ( add_new_point_q == 1'b1 ) begin
                 // when adding a new point what needs to be recorded? the coordinates of the new point but also the parents?              
                 if ( x_rand > new_point_parent_x && y_rand < new_point_parent_y ) begin // New point in quad 1
                     new_point_x <= (TWO_CONSTANT + new_point_parent_x) > N ? N : potential_new_point_x < (TWO_CONSTANT + new_point_parent_x) ? (TWO_CONSTANT + new_point_parent_x) : potential_new_point_x;
@@ -368,6 +366,7 @@ endfunction
             end
         end
     end
+    
     
 ////////////////////////////////////////////////////////////////////////
 // OBSTACLE COLLISION DETECTION - SYSTOLIC ARRAY
