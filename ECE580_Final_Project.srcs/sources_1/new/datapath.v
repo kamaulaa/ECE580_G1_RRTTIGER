@@ -86,12 +86,6 @@ wire [COORDINATE_WIDTH-1:0] nb_y;
 wire valid_in =   entering_check_new_point_q_collision == 1'b1 ? 1'b1
                 : (check_points_in_square_radius == 1'b1) ? nb_found : 1'b0; // if we're in this state we know we have a valid "new point q", just need to know if there's a neighbor high in the grid at this cycle
 
-// Cost calculation signals
-wire [COST_WIDTH-1:0] rd_cost; // TODO: connect to cost memory read data for nearest neighbor location
-wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
-wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
-wire update_min_point = (total_cost < c_min) ? 1'b1 : 1'b0;
-
 // Systolic array signals
 wire systolic_valid_out;
 wire systolic_valid_pair;
@@ -124,6 +118,7 @@ end
 
 ////////////////////////////////////////////////////////////////////////
 // QUANTIZATION BLOCK - COST CALCULATION
+wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 
 // quantization block for cost calculation
 quantization_block #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .COST_WIDTH(COST_WIDTH)) quantized_cost (
@@ -148,7 +143,7 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
 
-assign done_draining = ~(systolic_valid_out); // TODO: not finished
+assign done_draining = ~(systolic_valid_out || systolic_valid_pair_q); // TODO: not finished
 
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
@@ -415,6 +410,12 @@ end
 // TODO: when add_edge_state is high, update cost memory at idx(x_rand, y_rand) with c_min
 // TODO: when add_edge_state is high, update parent grid at idx(x_rand, y_rand) with {x_min, y_min}
 // TODO: when add_edge_state is high, verify occupancy_status[idx(x_rand, y_rand)] is already set to 1 (should happen during random point generation)
+
+// Cost calculation signals
+
+wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[???][COST_MSB:COST_LSB]; // TODO: connect to cost memory read data for nearest neighbor location
+wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
+wire update_min_point = ((total_cost < c_min) && systolic_valid_pair_q) ? 1'b1 : 1'b0;
 
 // update minimum point connection that gives random point a minimum cost - store this minimum point as parent of random point
 always @( posedge clk) begin
