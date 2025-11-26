@@ -48,6 +48,8 @@ module datapath #(
     output done_with_search_nearest_neighbor,
     output done_evaluating_random_point,
     output done_detecting_new_point_q_collision,
+    output steered_point_in_obstacle,
+    output done_checking_steered_point,
     
     // Control -> dpath
     input init_state,
@@ -60,6 +62,7 @@ module datapath #(
     input add_new_point_q,
     input eval_random_point,
     input generate_random_point,
+    input entering_check_steered_point,
     input entering_check_new_point_q_collision,
     input check_points_in_square_radius,
     input drain_arr
@@ -384,6 +387,33 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .PARENT_BITS(OUTERMOST_ITER_BITS
         );
 
 
+// Steered point collision check (fast reject optimization)
+reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
+reg steered_point_collided;
+
+assign steered_point_in_obstacle = steered_point_collided;
+assign done_checking_steered_point = (steered_point_check_cycle_count == NUM_PE);
+
+always @(posedge clk) begin
+    if (reset) begin
+        steered_point_check_cycle_count <= 0;
+        steered_point_collided <= 1'b0;
+    end else begin
+        if (entering_check_steered_point) begin
+            steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
+            steered_point_collided <= 1'b0;  // Reset flag
+        end else if (steered_point_check_cycle_count > 0 && steered_point_check_cycle_count < NUM_PE) begin
+            steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
+            // If any PE detects steered point inside obstacle, set flag
+            if (systolic_valid_out && !systolic_valid_pair) begin
+                steered_point_collided <= 1'b1;
+            end
+        end else if (done_checking_steered_point) begin
+            steered_point_check_cycle_count <= 0;
+        end
+    end
+end
+
 // Feed neighbors into systolic array on consecutive cycles for pipelined processing
 always @(posedge clk) begin
     if (reset) begin
@@ -394,7 +424,16 @@ always @(posedge clk) begin
         valid_in <= 1'b0;
     end
     else begin
-        if (entering_check_new_point_q_collision) begin
+        if (entering_check_steered_point) begin
+            // For steered point check: feed steered point with itself (dummy neighbor)
+            // We only care if steered point (x1,y1) is inside an obstacle
+            nearest_neighbors_checked <= 4'b0;
+            nb_index <= {OUTERMOST_ITER_BITS{1'b0}};
+            nb_x <= new_point_x;  // Use steered point as both endpoints
+            nb_y <= new_point_y;
+            valid_in <= 1'b1;
+        end
+        else if (entering_check_new_point_q_collision) begin
             // Load first neighbor (index 0) to be fed into systolic array on next clock edge
             nearest_neighbors_checked <= 4'b1;  // Counter = 1 means we've queued neighbor 0
             nb_index <= ten_nearest_neighbors[0][IDX_MSB:IDX_LSB];
@@ -421,7 +460,8 @@ end
 
 ////////////////////////////////////////////////////////////////////////
 // CHECK NEW POINT Q COLLISION
-// TODO: are we ever checking that new point q isn't inside an obstacle?
+// Checks if connections from steered point to all 10 nearest neighbors are collision-free
+// Steered point itself is pre-checked in CHECK_STEERED_POINT state for fast rejection
 
 reg [NUM_PE_WIDTH-1:0] detecting_new_point_q_collision_cycle_count;
 reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
