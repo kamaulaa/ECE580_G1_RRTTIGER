@@ -37,8 +37,7 @@ module rrt_random_point
             if (generate_req == 1'b1) begin
                 random_point_x <= lfsr[X_BITS-1:0];
                 random_point_y <= lfsr[ADDR_BITS-1:X_BITS];
-            end`
-
+            end
         end
     end
 endmodule
