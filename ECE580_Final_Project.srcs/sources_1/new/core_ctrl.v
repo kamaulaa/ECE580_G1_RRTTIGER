@@ -11,7 +11,6 @@
 module core_ctrl
 #(
     // ADJUSTABLE GRID PARAMETERS
-    // TODO: need to pass these from core into dpath and control modules 
     parameter N = 1024,
     parameter N_SQUARED = N * N,
     parameter OUTERMOST_ITER_MAX = 1024, // NEED THIS?
