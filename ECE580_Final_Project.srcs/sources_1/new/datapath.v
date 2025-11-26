@@ -226,11 +226,11 @@ endfunction
     reg [NEIGHBOR_ARRAY_WIDTH-1:0] ten_nearest_neighbors [0:9]; // stores index (occupied_array_current_idx)
     reg [3:0] nearest_neighbor_count; 
 
-    wire [3:0] best_neighbor_ten_idx; // index of top ten array 
-    wire [OUTERMOST_ITER_BITS-1:0] best_neighbor_idx; // index of full 1024 entries array
-    wire [DIST_WIDTH-1:0] best_neighbor_dist;
-    wire [3:0] worst_neighbor_ten_idx;
-    wire [DIST_WIDTH-1:0] worse_neighbor_dist;
+    reg [3:0] best_neighbor_ten_idx; // index of top ten array 
+    reg [OUTERMOST_ITER_BITS-1:0] best_neighbor_idx; // index of full 1024 entries array
+    reg [DIST_WIDTH-1:0] best_neighbor_dist;
+    reg [3:0] worst_neighbor_ten_idx;
+    reg [DIST_WIDTH-1:0] worst_neighbor_dist;
     
     // find best and worst neighbors among top ten neighbors 
     always @(*) begin
