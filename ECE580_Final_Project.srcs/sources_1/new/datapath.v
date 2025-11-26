@@ -117,7 +117,16 @@ reg [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_index_q;
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
 
 wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q > goal_top_bound) && (systolic_val_y1_q < goal_bottom_bound);
-assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_found if we reach goal AND connection is collision-free
+
+// Latch path_found so it stays high once goal is reached (since systolic_valid_pair_q is transient)
+reg path_found_q;
+always @(posedge clk) begin
+    if (reset)
+        path_found_q <= 1'b0;
+    else if (goal_reached && systolic_valid_pair_q)
+        path_found_q <= 1'b1;
+end
+assign path_found = path_found_q;
 
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
@@ -212,7 +221,6 @@ endfunction
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
         
     // Need to tell the controller if we can stop searching 
-    // NOTE: DOES THIS CHECK LAST ITERATION TOO?
     assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx);
 
     // Do the distance as combinational logic
@@ -270,7 +278,6 @@ endfunction
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
-    // NOTE: SHOULDNT ADD NEW POINT Q BE IN DIFFERENT BLOCK (STYLISTIC)
     always @( posedge clk ) begin
         if (reset) begin
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
@@ -303,14 +310,6 @@ endfunction
 
             // use best neighbor index to generate new point new point AFTER ALL NODES HAVE BEEN TRAVERSED
             if (done_with_search_nearest_neighbor == 1'b1 && search_neighbor == 1'b1) begin
-                // if ( entering_search_nearest_neighbor == 1'b1) begin
-                    // // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
-                    // new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-                    // new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
-                    // new_point_parent_index <= occupied_array_current_idx;
-                    // new_point_parent_dist <= distance;   
-                    // occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
-                // end 
                 new_point_parent_x <= occupied_points_array[best_neighbor_idx][X_MSB:X_LSB];
                 new_point_parent_y <= occupied_points_array[best_neighbor_idx][Y_MSB:Y_LSB];
                 new_point_parent_index <= best_neighbor_idx;
