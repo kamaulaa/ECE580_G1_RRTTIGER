@@ -23,6 +23,7 @@ module quantization_block #(
 )(
     input wire clk,
     input wire rst,
+    input wire valid_in,         // only calculate when valid data present
 
     input wire [COORDINATE_WIDTH-1:0] r_x1,  // random point x
     input wire [COORDINATE_WIDTH-1:0] r_y1,  // random point y
@@ -45,7 +46,7 @@ wire [COST_WIDTH-1:0] manhattan_distance = abs_x + abs_y;
 always @(posedge clk) begin
     if (rst) begin
         cost_out <= 0;
-    end else begin
+    end else if (valid_in) begin
         cost_out <= manhattan_distance;
     end
 end
