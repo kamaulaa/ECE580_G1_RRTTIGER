@@ -122,7 +122,7 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
 
-assign done_draining = ~(systolic_valid_out); // TODO: not finished
+assign done_draining = ~(systolic_valid_out ||  systolic_valid_pair_q); // TODO: not finished
 
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
@@ -200,6 +200,8 @@ endfunction
 ////////////////////////////////////////////////////////////////////////
 // NEARBOR NEIGHBOR SEARCH
 // search across all existing points for nearest point to randomly generated point 
+
+// need to use 5 obstacles, 1/8 for q
 
     localparam DIST_WIDTH = COORDINATE_WIDTH*2+2;
     reg [OUTERMOST_ITER_BITS-1:0] new_point_parent_index;
