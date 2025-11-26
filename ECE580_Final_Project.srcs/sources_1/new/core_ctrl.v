@@ -24,6 +24,9 @@ module core_ctrl
     input clk,
     input reset,
     
+    output failure_state,
+    output traceback_state,
+    
     // Inputs from the datapath
     input path_found,
     input new_point_q_collided,
@@ -84,6 +87,9 @@ module core_ctrl
             state <= next_state;
         end
     end
+    
+    assign failure_state = state == FAILURE;
+    assign traceback_state = state == TRACEBACK;
 
     always @ (*) begin
         // Default assignments to prevent latches
