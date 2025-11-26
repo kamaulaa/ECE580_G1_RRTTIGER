@@ -15,8 +15,8 @@ module rrt_random_point
     input                    clk,
     input                    rst,
     input                    generate_req, // pulse to get a new random point
-    output [X_BITS-1:0]  random_point_x,
-    output [Y_BITS-1:0]  random_point_y
+    output reg [X_BITS-1:0]  random_point_x,
+    output reg [Y_BITS-1:0]  random_point_y
 );
 
     localparam LFSR_BITS = ADDR_BITS + 1; // any default value would do as long as >= X_BITS + Y_BITS
@@ -26,17 +26,19 @@ module rrt_random_point
     // Next LFSR value: only advance when generate_req is 1
     wire [LFSR_BITS-1:0] lfsr_next = (generate_req==1'b1) ? {lfsr[LFSR_BITS-2:0], feedback} : lfsr;
 
-    assign random_point_x = lfsr[X_BITS-1:0];
-    assign random_point_y = lfsr[ADDR_BITS-1:X_BITS];
-
     always @(posedge clk) begin
         if (rst) begin
             lfsr <= {LFSR_BITS{1'b1}}; // non-zero feed
+            random_point_x <= {X_BITS{1'b0}};
+            random_point_y <= {Y_BITS{1'b0}};
         end 
         else begin
-            lfsr <= lfsr_next;
+            lfsr <= {lfsr[LFSR_BITS-2:0], feedback};
+            if (generate_req == 1'b1) begin
+                random_point_x <= lfsr[X_BITS-1:0];
+                random_point_y <= lfsr[ADDR_BITS-1:X_BITS];
+            end
         end
     end
-    
-
 endmodule
+
