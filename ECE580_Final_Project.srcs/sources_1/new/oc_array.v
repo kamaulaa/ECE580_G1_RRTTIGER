@@ -99,8 +99,7 @@ assign val_y2 = valid_pair ? y2_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 assign val_parent_index = valid_pair ? parent_index_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 
 // Check if ANY PE in the systolic array has valid data using direct OR reduction
-assign valid_out = |{valid_chain[10], valid_chain[9], valid_chain[8], valid_chain[7], 
-                      valid_chain[6], valid_chain[5], valid_chain[4], valid_chain[3], 
+assign valid_out = |{valid_chain[5], valid_chain[4], valid_chain[3], 
                       valid_chain[2], valid_chain[1], valid_chain[0]};
 
 endmodule 
