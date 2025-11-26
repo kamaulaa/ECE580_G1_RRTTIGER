@@ -140,8 +140,8 @@ begin
     $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
     
     // Start point
-    start_x = {COORDINATE_WIDTH{1'b0}};  // (0, 0)
-    start_y = {COORDINATE_WIDTH{1'b0}};
+    start_x = 10'd247;  // Random point
+    start_y = 10'd389;
     
     // Goal region: 10x10 box in upper-right corner
     goal_top_bound    = 0;
@@ -169,8 +169,8 @@ begin
     $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
     
     // Start point
-    start_x = {COORDINATE_WIDTH{1'b0}};  // (0, 0)
-    start_y = {COORDINATE_WIDTH{1'b0}};
+    start_x = 10'd247;  // Random point
+    start_y = 10'd389;
     
     // Goal region: 10x10 box in upper-right corner
     goal_top_bound    = 1023 - 10;
