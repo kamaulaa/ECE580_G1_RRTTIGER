@@ -32,7 +32,6 @@ module core_ctrl
     input done_draining,
     input parent_equals_current,
     input random_point_already_exists,
-    input window_search_busy,
     input done_with_search_nearest_neighbor,
     input done_evaluating_random_point,
     input done_detecting_new_point_q_collision,
@@ -43,7 +42,6 @@ module core_ctrl
     output reg init_state,
     output reg add_edge_state,
     output reg generate_req, // to random point generator module
-    output reg window_search_start, // to window search module 
     output reg search_neighbor, // signal to search neighbor from random generated point 
     output reg entering_search_nearest_neighbor,
     output reg add_new_point_q,
@@ -96,7 +94,6 @@ module core_ctrl
         init_state = 1'b0;
         add_edge_state = 1'b0;
         generate_req = 1'b0;
-        window_search_start = 1'b0;
         search_neighbor = 1'b0;
         entering_search_nearest_neighbor = 1'b0;
         add_new_point_q = 1'b0;

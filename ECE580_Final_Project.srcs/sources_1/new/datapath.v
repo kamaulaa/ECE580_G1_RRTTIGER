@@ -44,7 +44,6 @@ module datapath #(
     output done_draining,
     output parent_equals_current,
     output random_point_already_exists, // valid random point
-    output window_search_busy, // already looking for nearest neighbor
     output done_with_search_nearest_neighbor,
     output done_evaluating_random_point,
     output done_detecting_new_point_q_collision,
@@ -56,7 +55,6 @@ module datapath #(
     input add_edge_state,
     input outer_loop_check_state,
     input generate_req, // to random point generator module
-    input window_search_start, // to window search module 
     input search_neighbor, // signal to search neighbor from random generated point
     input entering_search_nearest_neighbor,
     input add_new_point_q,
@@ -76,13 +74,12 @@ reg [COORDINATE_WIDTH-1:0] x_rand; // register that holds the output of the rand
 reg [COORDINATE_WIDTH-1:0] y_rand; 
 
 // Minimum cost point registers
-reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of radius/window search
+reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of nearest neighbor search
 reg [COORDINATE_WIDTH-1:0] y_min;
 reg [COST_WIDTH-1:0] c_min; // minimum cost found so far
 reg [OUTERMOST_ITER_BITS-1:0] parent_index_min; // index of the best parent (minimum cost neighbor)
 
 // Neighbor search signals
-// wire nb_found; // a nearest neighbor was found in the window
 reg [COORDINATE_WIDTH-1:0] nb_x; // coords of that nearest neighbor
 reg [COORDINATE_WIDTH-1:0] nb_y;
 reg [OUTERMOST_ITER_BITS-1:0] nb_index;
@@ -95,7 +92,9 @@ reg valid_in;
 wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_q][COST_MSB:COST_LSB]; // nearest neighbor's current cost (distance from start)
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
-wire update_min_point = (total_cost < c_min) ? 1'b1 : 1'b0;
+// Gate update_min_point to only fire during CHECK_NEW_POINT_Q_COLLISION phase
+wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && 
+                        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 
 // Systolic array signals
 wire systolic_valid_out;
@@ -116,7 +115,7 @@ reg [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_index_q;
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
 
-wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q > goal_top_bound) && (systolic_val_y1_q < goal_bottom_bound);
+wire goal_reached = (systolic_val_x1_q <= goal_right_bound) && (systolic_val_x1_q >= goal_left_bound) && (systolic_val_y1_q >= goal_top_bound) && (systolic_val_y1_q <= goal_bottom_bound);
 
 // Latch path_found so it stays high once goal is reached (since systolic_valid_pair_q is transient)
 reg path_found_q;
@@ -463,7 +462,7 @@ end
 // Checks if connections from steered point to all 10 nearest neighbors are collision-free
 // Steered point itself is pre-checked in CHECK_STEERED_POINT state for fast rejection
 
-reg [NUM_PE_WIDTH-1:0] detecting_new_point_q_collision_cycle_count;
+reg [4:0] detecting_new_point_q_collision_cycle_count;  // 5 bits to hold up to 14 (10 neighbors + 5 PEs - 1)
 reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 reg found_valid_neighbor; // Track if at least one neighbor produced a valid (collision-free) connection
 
