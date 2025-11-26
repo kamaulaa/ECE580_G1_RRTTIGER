@@ -116,7 +116,7 @@ reg [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_index_q;
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
 
-wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q < goal_top_bound) && (systolic_val_y1_q > goal_bottom_bound);
+wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q > goal_top_bound) && (systolic_val_y1_q < goal_bottom_bound);
 assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_found if we reach goal AND connection is collision-free
 
 ////////////////////////////////////////////////////////////////////////
