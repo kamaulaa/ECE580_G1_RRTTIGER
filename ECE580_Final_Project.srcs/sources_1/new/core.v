@@ -35,7 +35,11 @@ module core
     input wire [NUM_PE*COORDINATE_WIDTH-1:0] obs_bottom,
 
     // Status outputs
-    output path_found
+    output path_found,
+    
+    // Expose states so that testbench knows when to end
+    output failure_state,
+    output traceback_state
 );
 
     // Control -> Datapath signals
@@ -61,6 +65,10 @@ module core
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
     wire done_detecting_new_point_q_collision;
+    
+    // Expose state to core
+    wire failure_state;
+    wire traceback_state;
 
     // Datapath instantiation
     datapath #(
@@ -131,6 +139,10 @@ module core
     ) core_ctrl_inst (
         .clk(clk),
         .reset(reset),
+        
+        // Outputs to core
+        .failure_state(failure_state),
+        .traceback_state(traceback_state),
         
         // Inputs from datapath
         .path_found(path_found),
