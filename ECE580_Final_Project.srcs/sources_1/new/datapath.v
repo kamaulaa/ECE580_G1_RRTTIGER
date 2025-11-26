@@ -429,7 +429,9 @@ reg found_valid_neighbor; // Track if at least one neighbor produced a valid (co
 
 // new_point_q_collided = 1 if ALL neighbors collided (no valid connections found)
 assign new_point_q_collided = ~found_valid_neighbor;
-assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cycle_count == NUM_PE;
+// Wait for pipeline to fully drain: nearest_neighbor_count cycles to feed + NUM_PE-1 cycles to drain
+wire [4:0] total_drain_cycles = nearest_neighbor_count + NUM_PE - 1;
+assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cycle_count == total_drain_cycles;
 
 always @( posedge clk ) begin
     if ( reset ) begin
