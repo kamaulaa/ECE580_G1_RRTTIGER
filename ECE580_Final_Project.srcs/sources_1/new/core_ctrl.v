@@ -26,6 +26,7 @@ module core_ctrl
     
     output failure_state,
     output traceback_state,
+    output output_state,
     
     // Inputs from the datapath
     input path_found,
@@ -74,6 +75,8 @@ module core_ctrl
 
     reg [3:0] state;
     reg [3:0] next_state;
+
+    assign output_state = state;
 
     always @ ( posedge clk ) begin
         if ( reset ) begin

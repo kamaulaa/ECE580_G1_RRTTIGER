@@ -173,6 +173,16 @@ endfunction
     assign done_evaluating_random_point = (eval_random_point == 1'b1) && (current_array_entry_same_as_random || (occupied_array_current_idx == occupied_array_idx));
     assign random_point_already_exists = current_array_entry_same_as_random;
 
+//    output path_found,
+//    output new_point_q_collided,
+//    output done_draining,
+//    output parent_equals_current,
+//    output random_point_already_exists, // valid random point
+//    output window_search_busy, // already looking for nearest neighbor
+//    output done_with_search_nearest_neighbor,
+//    output done_evaluating_random_point,
+//    output done_detecting_new_point_q_collision,
+
     // check if generated random point already exists
     always @( posedge clk ) begin
         if ( reset == 1'b1) begin
