@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
 // ECE580 Final Project
-`include "datapath.v"
-`include "core_ctrl.v"
 
 module core
 #(
@@ -35,10 +33,6 @@ module core
     input wire [NUM_PE*COORDINATE_WIDTH-1:0] obs_right,
     input wire [NUM_PE*COORDINATE_WIDTH-1:0] obs_top,
     input wire [NUM_PE*COORDINATE_WIDTH-1:0] obs_bottom,
-
-    // Status outputs
-    output path_found
-);
 
     // Status outputs
     output path_found
@@ -163,5 +157,4 @@ module core
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr)
     );
-
 endmodule
