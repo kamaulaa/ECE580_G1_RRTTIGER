@@ -124,12 +124,6 @@ assign done_draining = ~(systolic_valid_out); // TODO: not finished
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
 
-// Note from Lauren: the "add_edge_state" signal should serve as the write enable signal to update the vertex grid (occupancy_status) 
-// because it tells us that we're in the state where we want to record the new random point and its optimal parent
-// The "add edge state" signal should also be used as the write enable signal for the costs grid and parent grid
-
-// NEED STARTING POINT TO BE FIRST POINT ADDED TO OCCUPANCY STATUS
-
 // array to store points in grid and parent index
 localparam ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2 + COST_WIDTH; // parent_index + x_coord + y_coord + cost
 localparam PARENT_IDX_MSB = ARRAY_WIDTH - 1;
@@ -282,12 +276,16 @@ endfunction
             nearest_neighbor_count <= 4'b0;
 
         end else begin
+            // Reset nearest_neighbor_count at the start of each neighbor search
+            if (entering_search_nearest_neighbor == 1'b1) begin
+                nearest_neighbor_count <= 4'b0;
+            end
             // add first ten points into top 10 nearest neighbor array
-            if (nearest_neighbor_count < 4'd10) begin
+            else if (nearest_neighbor_count < 4'd10 && search_neighbor == 1'b1) begin
                 ten_nearest_neighbors[nearest_neighbor_count] <= {occupied_array_current_idx, distance};
                 nearest_neighbor_count <= nearest_neighbor_count + 1'b1; // max at 10
             end
-            else begin
+            else if (search_neighbor == 1'b1) begin
                 // replace current worst if new distance is smaller
                 if (distance < ten_nearest_neighbors[worst_neighbor_ten_idx][DIST_MSB:DIST_LSB]) begin
                     ten_nearest_neighbors[worst_neighbor_ten_idx] <= {occupied_array_current_idx, distance};
