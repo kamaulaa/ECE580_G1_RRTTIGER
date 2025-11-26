@@ -44,22 +44,23 @@ module datapath #(
     output done_draining,
     output parent_equals_current,
     output random_point_already_exists, // valid random point
-    output window_search_busy, // already looking for nearest neighbor
     output done_with_search_nearest_neighbor,
     output done_evaluating_random_point,
     output done_detecting_new_point_q_collision,
+    output steered_point_in_obstacle,
+    output done_checking_steered_point,
     
     // Control -> dpath
     input init_state,
     input add_edge_state,
     input outer_loop_check_state,
     input generate_req, // to random point generator module
-    input window_search_start, // to window search module 
     input search_neighbor, // signal to search neighbor from random generated point
     input entering_search_nearest_neighbor,
     input add_new_point_q,
     input eval_random_point,
     input generate_random_point,
+    input entering_check_steered_point,
     input entering_check_new_point_q_collision,
     input check_points_in_square_radius,
     input drain_arr,
@@ -102,13 +103,12 @@ reg [COORDINATE_WIDTH-1:0] x_rand; // register that holds the output of the rand
 reg [COORDINATE_WIDTH-1:0] y_rand; 
 
 // Minimum cost point registers
-reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of radius/window search
+reg [COORDINATE_WIDTH-1:0] x_min; // coordinates of nearest neighbor with min cost for this iteration of nearest neighbor search
 reg [COORDINATE_WIDTH-1:0] y_min;
 reg [COST_WIDTH-1:0] c_min; // minimum cost found so far
 reg [OUTERMOST_ITER_BITS-1:0] parent_index_min; // index of the best parent (minimum cost neighbor)
 
 // Neighbor search signals
-// wire nb_found; // a nearest neighbor was found in the window
 reg [COORDINATE_WIDTH-1:0] nb_x; // coords of that nearest neighbor
 reg [COORDINATE_WIDTH-1:0] nb_y;
 reg [OUTERMOST_ITER_BITS-1:0] nb_index;
@@ -121,7 +121,9 @@ reg valid_in;
 wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_q][COST_MSB:COST_LSB]; // nearest neighbor's current cost (distance from start)
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
-wire update_min_point = (total_cost < c_min) ? 1'b1 : 1'b0;
+// Gate update_min_point to only fire during CHECK_NEW_POINT_Q_COLLISION phase
+wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && 
+                        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 
 // Systolic array signals
 wire systolic_valid_out;
@@ -142,8 +144,17 @@ reg [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_index_q;
 // Goal check: check if current point is within goal bounds AND doesn't collide with obstacles
 // Use delayed systolic outputs to match the timing of calculated_cost from quantization block
 
-wire goal_reached = (systolic_val_x1_q < goal_right_bound) && (systolic_val_x1_q > goal_left_bound) && (systolic_val_y1_q < goal_top_bound) && (systolic_val_y1_q > goal_bottom_bound);
-assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_found if we reach goal AND connection is collision-free
+wire goal_reached = (systolic_val_x1_q <= goal_right_bound) && (systolic_val_x1_q >= goal_left_bound) && (systolic_val_y1_q >= goal_top_bound) && (systolic_val_y1_q <= goal_bottom_bound);
+
+// Latch path_found so it stays high once goal is reached (since systolic_valid_pair_q is transient)
+reg path_found_q;
+always @(posedge clk) begin
+    if (reset)
+        path_found_q <= 1'b0;
+    else if (goal_reached && systolic_valid_pair_q)
+        path_found_q <= 1'b1;
+end
+assign path_found = path_found_q;
 
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
@@ -248,7 +259,6 @@ endfunction
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
         
     // Need to tell the controller if we can stop searching 
-    // NOTE: DOES THIS CHECK LAST ITERATION TOO?
     assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx);
 
     // Do the distance as combinational logic
@@ -306,7 +316,6 @@ endfunction
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
-    // NOTE: SHOULDNT ADD NEW POINT Q BE IN DIFFERENT BLOCK (STYLISTIC)
     always @( posedge clk ) begin
         if (reset) begin
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
@@ -339,14 +348,6 @@ endfunction
 
             // use best neighbor index to generate new point new point AFTER ALL NODES HAVE BEEN TRAVERSED
             if (done_with_search_nearest_neighbor == 1'b1 && search_neighbor == 1'b1) begin
-                // if ( entering_search_nearest_neighbor == 1'b1) begin
-                    // // If it's our first cycle looking for a nearest neighbor, make the first one the nearest one
-                    // new_point_parent_x <= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-                    // new_point_parent_y <= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
-                    // new_point_parent_index <= occupied_array_current_idx;
-                    // new_point_parent_dist <= distance;   
-                    // occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
-                // end 
                 new_point_parent_x <= occupied_points_array[best_neighbor_idx][X_MSB:X_LSB];
                 new_point_parent_y <= occupied_points_array[best_neighbor_idx][Y_MSB:Y_LSB];
                 new_point_parent_index <= best_neighbor_idx;
@@ -425,6 +426,33 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .PARENT_BITS(OUTERMOST_ITER_BITS
         );
 
 
+// Steered point collision check - for fast rejections
+reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
+reg steered_point_collided;
+
+assign steered_point_in_obstacle = steered_point_collided;
+assign done_checking_steered_point = (steered_point_check_cycle_count == NUM_PE);
+
+always @(posedge clk) begin
+    if (reset) begin
+        steered_point_check_cycle_count <= 0;
+        steered_point_collided <= 1'b0;
+    end else begin
+        if (entering_check_steered_point) begin
+            steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
+            steered_point_collided <= 1'b0;  // Reset flag
+        end else if (steered_point_check_cycle_count > 0 && steered_point_check_cycle_count < NUM_PE) begin
+            steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
+            // If any PE detects steered point inside obstacle, set flag
+            if (systolic_valid_out && !systolic_valid_pair) begin
+                steered_point_collided <= 1'b1;
+            end
+        end else if (done_checking_steered_point) begin
+            steered_point_check_cycle_count <= 0;
+        end
+    end
+end
+
 // Feed neighbors into systolic array on consecutive cycles for pipelined processing
 always @(posedge clk) begin
     if (reset) begin
@@ -435,7 +463,16 @@ always @(posedge clk) begin
         valid_in <= 1'b0;
     end
     else begin
-        if (entering_check_new_point_q_collision) begin
+        if (entering_check_steered_point) begin
+            // For steered point check: feed steered point with itself (dummy neighbor)
+            // We only care if steered point (x1,y1) is inside an obstacle
+            nearest_neighbors_checked <= 4'b0;
+            nb_index <= {OUTERMOST_ITER_BITS{1'b0}};
+            nb_x <= new_point_x;  // Use steered point as both endpoints
+            nb_y <= new_point_y;
+            valid_in <= 1'b1;
+        end
+        else if (entering_check_new_point_q_collision) begin
             // Load first neighbor (index 0) to be fed into systolic array on next clock edge
             nearest_neighbors_checked <= 4'b1;  // Counter = 1 means we've queued neighbor 0
             nb_index <= ten_nearest_neighbors[0][IDX_MSB:IDX_LSB];
@@ -462,9 +499,10 @@ end
 
 ////////////////////////////////////////////////////////////////////////
 // CHECK NEW POINT Q COLLISION
-// TODO: are we ever checking that new point q isn't inside an obstacle?
+// Checks if connections from steered point to all 10 nearest neighbors are collision-free
+// Steered point itself is pre-checked in CHECK_STEERED_POINT state for fast rejection
 
-reg [4:0] detecting_new_point_q_collision_cycle_count; // [NUM_PE_WIDTH-1:0]
+reg [4:0] detecting_new_point_q_collision_cycle_count;  // 5 bits to hold up to 14 (10 neighbors + 5 PEs - 1)
 reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 reg found_valid_neighbor; // Track if at least one neighbor produced a valid (collision-free) connection
 

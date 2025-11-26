@@ -62,13 +62,13 @@ module core
     // Control -> Datapath signals
     wire init_state;
     wire add_edge_state;
-//    wire generate_req;
-    wire window_search_start;
+    wire generate_req;
     wire search_neighbor;
     wire entering_search_nearest_neighbor;
     wire add_new_point_q;
     wire eval_random_point;
     wire generate_random_point;
+    wire entering_check_steered_point;
     wire entering_check_new_point_q_collision;
     wire check_points_in_square_radius;
     wire drain_arr;
@@ -77,13 +77,12 @@ module core
     wire new_point_q_collided;
     wire done_draining;
     wire parent_equals_current;
-//    wire random_point_already_exists;
-    wire window_search_busy;
+    wire random_point_already_exists;
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
     wire done_detecting_new_point_q_collision;
-    
-    
+    wire steered_point_in_obstacle;
+    wire done_checking_steered_point;
 
     // Datapath instantiation
     datapath #(
@@ -121,22 +120,23 @@ module core
         .done_draining(done_draining),
         .parent_equals_current(parent_equals_current),
         .random_point_already_exists(random_point_already_exists),
-        .window_search_busy(window_search_busy),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
+        .steered_point_in_obstacle(steered_point_in_obstacle),
+        .done_checking_steered_point(done_checking_steered_point),
         
         // Inputs from control
         .init_state(init_state),
         .add_edge_state(add_edge_state),
         .outer_loop_check_state(1'b0),  // Not used in current implementation
         .generate_req(generate_req),
-        .window_search_start(window_search_start),
         .search_neighbor(search_neighbor),
         .entering_search_nearest_neighbor(entering_search_nearest_neighbor),
         .add_new_point_q(add_new_point_q),
         .eval_random_point(eval_random_point),
         .generate_random_point(generate_random_point),
+        .entering_check_steered_point(entering_check_steered_point),
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr),
@@ -181,21 +181,22 @@ module core
         .done_draining(done_draining),
         .parent_equals_current(parent_equals_current),
         .random_point_already_exists(random_point_already_exists),
-        .window_search_busy(window_search_busy),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
+        .steered_point_in_obstacle(steered_point_in_obstacle),
+        .done_checking_steered_point(done_checking_steered_point),
         
         // Outputs to datapath
         .init_state(init_state),
         .add_edge_state(add_edge_state),
         .generate_req(generate_req),
-        .window_search_start(window_search_start),
         .search_neighbor(search_neighbor),
         .entering_search_nearest_neighbor(entering_search_nearest_neighbor),
         .add_new_point_q(add_new_point_q),
         .eval_random_point(eval_random_point),
         .generate_random_point(generate_random_point),
+        .entering_check_steered_point(entering_check_steered_point),
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr)
