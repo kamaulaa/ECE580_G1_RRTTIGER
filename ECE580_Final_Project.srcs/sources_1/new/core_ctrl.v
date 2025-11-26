@@ -162,7 +162,7 @@ module core_ctrl
                 end
             end
 
-            // check if their are any neighbors in the square window radius around new node
+ /*           // check if their are any neighbors in the square window radius around new node
             CHECK_POINTS_IN_SQUARE_RADIUS: begin
                 if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
                     next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
@@ -179,6 +179,7 @@ module core_ctrl
                     end
                 end
             end
+    */
 
             // KAMUALA TODO: combine DRAIN_ARR and ADD_EDGE states?
             // compare costs of neighbors found in window radius and add edge to best one

@@ -31,6 +31,7 @@ module oc_pe #(
     // endpoint 2 (x2, y2)
     input wire [COORDINATE_WIDTH-1:0] x2_in,
     input wire [COORDINATE_WIDTH-1:0] y2_in,
+    input wire [COORDINATE_WIDTH-1:0] parent_index_in,
     
     // outputs to next PE
     output reg valid_out,          // valid is HIGH (1) if no collision was detected
@@ -39,7 +40,8 @@ module oc_pe #(
     output reg [COORDINATE_WIDTH-1:0] x1_out,
     output reg [COORDINATE_WIDTH-1:0] y1_out,
     output reg [COORDINATE_WIDTH-1:0] x2_out,
-    output reg [COORDINATE_WIDTH-1:0] y2_out
+    output reg [COORDINATE_WIDTH-1:0] y2_out,
+    output reg [COORDINATE_WIDTH-1:0] parent_index_out
 );
     
     // (NO) COLLISION CHECK 1: both endpoints on the same side, outside of obstacle
@@ -149,12 +151,14 @@ module oc_pe #(
             y1_out <= {COORDINATE_WIDTH{1'b0}};
             x2_out <= {COORDINATE_WIDTH{1'b0}};
             y2_out <= {COORDINATE_WIDTH{1'b0}};
+            parent_index_out <= {COORDINATE_WIDTH{1'b0}};
         end else begin
             // pass through endpoint coordinates to next PE in systolic array
             x1_out <= x1_in;
             y1_out <= y1_in;
             x2_out <= x2_in;
             y2_out <= y2_in;
+            parent_index_out <= parent_index_in;
             
             // if collision detected, not valid, propagate 0
             // if previous PE found collision, will be invalid ; otherwise validity is based on if a collision was found with this PE's obstacle

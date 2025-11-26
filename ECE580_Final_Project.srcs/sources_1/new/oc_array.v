@@ -8,6 +8,7 @@
 module oc_array #(
     parameter NUM_PE = 10, // need a way to change this parameter based on how many randomly generated obstacles we have 
     // number of PEs is the number of obstacles
+    parameter PARENT_BITS = 10,
     parameter COORDINATE_WIDTH = 10
 )(
     input wire clk,
@@ -27,6 +28,7 @@ module oc_array #(
     // current nearest neighbor point
     input wire [COORDINATE_WIDTH-1:0] n_x2,
     input wire [COORDINATE_WIDTH-1:0] n_y2,
+    input wire [PARENT_BITS-1:0] n_index,
 
     // valid input signal - high when we have both valid random point and neighbor found
     input wire valid_in,
@@ -38,7 +40,8 @@ module oc_array #(
     output [COORDINATE_WIDTH-1:0]   val_x1,  //random point
     output [COORDINATE_WIDTH-1:0]   val_y1,  //random point
     output [COORDINATE_WIDTH-1:0]   val_x2, //nearest neighbor
-    output [COORDINATE_WIDTH-1:0]   val_y2  //nearest neighbor
+    output [COORDINATE_WIDTH-1:0]   val_y2,  //nearest neighbor
+    output [PARENT_BITS-1:0] val_parent_index // nearest neighbor index in occupied points array
 );
 
 // Intermediate wires to chain PEs together (NUM_PE+1 to include input and final output)
@@ -47,6 +50,7 @@ wire [COORDINATE_WIDTH-1:0] x1_chain [0:NUM_PE];
 wire [COORDINATE_WIDTH-1:0] y1_chain [0:NUM_PE];
 wire [COORDINATE_WIDTH-1:0] x2_chain [0:NUM_PE];
 wire [COORDINATE_WIDTH-1:0] y2_chain [0:NUM_PE];
+wire [PARENT_BITS-1:0] parent_index_chain [0:NUM_PE];
 
 // First PE gets valid_in signal (high when we have both valid random point and neighbor found)
 assign valid_chain[0] = valid_in;
@@ -56,6 +60,7 @@ assign x1_chain[0] = r_x1;
 assign y1_chain[0] = r_y1;
 assign x2_chain[0] = n_x2;
 assign y2_chain[0] = n_y2;
+assign parent_index_chain[0] = n_index;
 
 genvar i;
 generate 
@@ -72,11 +77,13 @@ generate
             .y1_in(y1_chain[i]),
             .x2_in(x2_chain[i]),
             .y2_in(y2_chain[i]),
+            .parent_index_in(parent_index_chain[i]),
             .valid_out(valid_chain[i+1]),           // To next PE
             .x1_out(x1_chain[i+1]),                 // To next PE
             .y1_out(y1_chain[i+1]),
             .x2_out(x2_chain[i+1]),
-            .y2_out(y2_chain[i+1])
+            .y2_out(y2_chain[i+1]),
+            .parent_index_out(parent_index_chain[i+1])
         );
     end
 endgenerate
@@ -89,6 +96,7 @@ assign val_x1 = valid_pair ? x1_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 assign val_y1 = valid_pair ? y1_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 assign val_x2 = valid_pair ? x2_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 assign val_y2 = valid_pair ? y2_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
+assign val_parent_index = valid_pair ? parent_index_chain[NUM_PE] : {COORDINATE_WIDTH{1'b0}};
 
 // Check if ANY PE in the systolic array has valid data using direct OR reduction
 assign valid_out = |{valid_chain[10], valid_chain[9], valid_chain[8], valid_chain[7], 
