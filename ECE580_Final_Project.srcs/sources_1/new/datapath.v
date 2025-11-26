@@ -88,7 +88,8 @@ reg [OUTERMOST_ITER_BITS-1:0] nb_index;
 reg valid_in;
 
 // Cost calculation signals
-wire [COST_WIDTH-1:0] rd_cost; // TODO: connect to cost memory read data for nearest neighbor location
+// Read the neighbor's accumulated cost from occupied_points_array using the pipelined parent index
+wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_q][COST_MSB:COST_LSB];
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
 wire update_min_point = (total_cost < c_min) ? 1'b1 : 1'b0;
@@ -498,5 +499,4 @@ always @( posedge clk) begin
         end
     end 
 end
-
 endmodule
