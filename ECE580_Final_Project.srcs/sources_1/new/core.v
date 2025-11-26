@@ -40,13 +40,29 @@ module core
     // Expose states so that testbench knows when to end
     output failure_state,
     output traceback_state,
-    output output_state
+    output [3:0] output_state,
+    output generate_req,
+    output random_point_already_exists,
+    output [9:0] xrand_wire,
+    output [9:0] yrand_wire,
+    output [9:0] occupied_array_currentidx,
+    output current_array_entry_same_asrandom,
+    output [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
+    output [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
+    output x_equal,
+    output y_equal,
+    
+    output done_detecting_new_point_qcollision,
+    output new_point_qcollided,
+    output [4:0] total_draincycles,
+    output [4:0] detecting_new_point_q_collision_cyclecount    
 );
+
 
     // Control -> Datapath signals
     wire init_state;
     wire add_edge_state;
-    wire generate_req;
+//    wire generate_req;
     wire window_search_start;
     wire search_neighbor;
     wire entering_search_nearest_neighbor;
@@ -61,11 +77,13 @@ module core
     wire new_point_q_collided;
     wire done_draining;
     wire parent_equals_current;
-    wire random_point_already_exists;
+//    wire random_point_already_exists;
     wire window_search_busy;
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
     wire done_detecting_new_point_q_collision;
+    
+    
 
     // Datapath instantiation
     datapath #(
@@ -121,7 +139,22 @@ module core
         .generate_random_point(generate_random_point),
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
-        .drain_arr(drain_arr)
+        .drain_arr(drain_arr),
+        
+        .xrand_wire(xrand_wire),
+        .yrand_wire(yrand_wire),
+        .occupied_array_currentidx(occupied_array_currentidx),
+        .current_array_entry_same_asrandom(current_array_entry_same_asrandom),
+        .occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB(occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB),
+        .occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB(occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB),
+        .x_equal(x_equal),
+        .y_equal(y_equal),
+        
+        .done_detecting_new_point_qcollision(done_detecting_new_point_qcollision),
+        .new_point_qcollided(new_point_qcollided),
+        .total_draincycles(total_draincycles),
+        .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount)
+
     );
 
     // Control FSM instantiation

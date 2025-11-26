@@ -44,7 +44,21 @@ wire path_found;
 // Exposed states
 wire failure_state;
 wire traceback_state;
-wire output_state;
+wire[3:0] output_state;
+wire random_point_already_exists;
+wire [9:0] xrand_wire;
+wire [9:0] yrand_wire;
+wire [9:0] occupied_array_currentidx;
+wire current_array_entry_same_asrandom;
+wire [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB;
+wire [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
+wire x_equal;
+wire y_equal;  
+
+wire done_detecting_new_point_qcollision;
+wire new_point_qcollided;
+wire [4:0] total_draincycles;
+wire [4:0] detecting_new_point_q_collision_cyclecount;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -73,7 +87,23 @@ core #(
     .path_found(path_found),
     .failure_state(failure_state),
     .traceback_state(traceback_state),
-    .output_state(output_state)
+    .output_state(output_state),
+    .generate_req(generate_req),
+    .random_point_already_exists(random_point_already_exists),
+    .xrand_wire(xrand_wire),
+    .yrand_wire(yrand_wire),
+    .occupied_array_currentidx(occupied_array_currentidx),
+    .current_array_entry_same_asrandom(current_array_entry_same_asrandom),
+    .occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB(occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB),
+    .occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB(occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB),
+    .x_equal(x_equal),
+    .y_equal(y_equal),
+    
+    .done_detecting_new_point_qcollision(done_detecting_new_point_qcollision),
+    .new_point_qcollided(new_point_qcollided),
+    .total_draincycles(total_draincycles),
+    .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount)
+
 );
 
 // clock
@@ -104,20 +134,34 @@ initial begin
     goal_left_bound = 1023 - 10;
     goal_right_bound = 1023;
 
-    obs_left = 0;// { 10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022}; // start by making the obstacles all the same, putting them in the upper right corner and small
-    obs_right = 0;//{ 10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
-    obs_top = 0;// { 10'd0, 10'd0, 10'd0, 10'd0, 10'd0};
-    obs_bottom = 0;// { 10'd1, 10'd1, 10'd1, 10'd1, 10'd1};
+    obs_left = { 10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022}; // start by making the obstacles all the same, putting them in the upper right corner and small
+    obs_right = { 10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
+    obs_top = { 10'd0, 10'd0, 10'd0, 10'd0, 10'd0};
+    obs_bottom = { 10'd1, 10'd1, 10'd1, 10'd1, 10'd1};
 end
 
-// on each clock edge just figure if we got to the final states yet
-always @( posedge clk) begin
-    if ( failure_state == 1'b1 || traceback_state == 1'b1 ) begin
-        $display("time: %0t", $time);
-        $display("path_found: %b", path_found);
-        #5 $finish;
+//forever begin
+//    // on each clock edge just figure if we got to the final states yet
+//    always @( posedge clk) begin
+//        if ( failure_state == 1'b1 || traceback_state == 1'b1 ) begin
+//            $display("time: %0t", $time);
+//            $display("path_found: %b", path_found);
+//            #5 $finish;
+//        end
+//    end
+//end
+
+initial begin
+    forever begin @(posedge clk);
+        if (failure_state || traceback_state) begin
+            $display("time: %0t", $time);
+            $display("path_found: %b", path_found);
+            $finish;
+        end
     end
 end
+
+
 
 always @(posedge clk) begin
     $display("t=%0t | failure=%b traceback=%b path_found=%b", $time, failure_state, traceback_state, path_found);
