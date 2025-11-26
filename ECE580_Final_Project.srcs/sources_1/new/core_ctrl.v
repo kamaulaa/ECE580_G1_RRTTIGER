@@ -34,6 +34,8 @@ module core_ctrl
     input done_with_search_nearest_neighbor,
     input done_evaluating_random_point,
     input done_detecting_new_point_q_collision,
+    input steered_point_in_obstacle,
+    input done_checking_steered_point,
     
     // Need output control signals to the datapath
     output reg init_state,
@@ -45,6 +47,7 @@ module core_ctrl
     output reg add_new_point_q,
     output reg eval_random_point,
     output reg generate_random_point,
+    output reg entering_check_steered_point,
     output reg entering_check_new_point_q_collision,
     output reg check_points_in_square_radius,
     output reg drain_arr
@@ -65,6 +68,7 @@ module core_ctrl
     localparam SUCCESS = 4'b1010;
     localparam ADD_NEW_POINT_Q = 4'b1011;
     localparam EVAL_RANDOM_POINT = 4'b1100;
+    localparam CHECK_STEERED_POINT = 4'b1101;
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -93,6 +97,7 @@ module core_ctrl
         add_new_point_q = 1'b0;
         eval_random_point = 1'b0;
         generate_random_point = 1'b0;
+        entering_check_steered_point = 1'b0;
         entering_check_new_point_q_collision = 1'b0;
         check_points_in_square_radius = 1'b0;
         drain_arr = 1'b0;
@@ -160,9 +165,26 @@ module core_ctrl
 
             // new point should be computed here too 
             ADD_NEW_POINT_Q: begin
-                next_state = CHECK_NEW_POINT_Q_COLLISION;
+                next_state = CHECK_STEERED_POINT;
                 add_new_point_q = 1'b1;
-                entering_check_new_point_q_collision = 1'b1; // turn this on for only 1 cycle to let the systolic array take in the new point q and immediately not take any more input
+                entering_check_steered_point = 1'b1; // Start fast check of steered point only
+            end
+
+            // Fast check: Is steered point inside any obstacle? (NUM_PE cycles)
+            // This avoids wasting time checking all 10 neighbors if steered point itself is invalid
+            CHECK_STEERED_POINT: begin
+                if (done_checking_steered_point == 1'b0) begin
+                    next_state = CHECK_STEERED_POINT;
+                    entering_check_steered_point = 1'b0;
+                end else if (steered_point_in_obstacle == 1'b1) begin
+                    // Steered point is inside obstacle - fast reject, generate new random point
+                    next_state = GENERATE_RANDOM_POINT;
+                    generate_req = 1'b1;
+                end else begin
+                    // Steered point is valid - proceed to check all neighbor connections
+                    next_state = CHECK_NEW_POINT_Q_COLLISION;
+                    entering_check_new_point_q_collision = 1'b1;
+                end
             end
 
             // check collision of new point q with obstacles via systolic array
@@ -181,25 +203,6 @@ module core_ctrl
                 end
             end
 
- /*           // check if their are any neighbors in the square window radius around new node
-            CHECK_POINTS_IN_SQUARE_RADIUS: begin
-                if (window_search_start == 1'b1 && window_search_busy == 1'b0) begin
-                    next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-                    window_search_start <= 1'b0; 
-                end else if (window_search_busy == 1'b1) begin
-                    next_state <= CHECK_POINTS_IN_SQUARE_RADIUS;
-                end else begin //  KAMUALA TODO: update this logic
-                    check_points_in_square_radius <= 1'b0;
-                    if (done_draining == 1'b1) begin
-                        drain_arr <= 1'b1;
-                        next_state <= DRAIN_ARR;
-                    end else begin
-                        next_state <= ADD_EDGE;
-                    end
-                end
-            end
-    */
-
             ADD_EDGE: begin
                 add_edge_state = 1'b1;
                 next_state = OUTERMOST_LOOP_CHECK;
@@ -210,7 +213,7 @@ module core_ctrl
             end
 
             TRACEBACK: begin
-                if (parent_equals_current == 1'b1) begin
+                if (parent_equals_current == 1'b1) begin // has not been implemented
                     next_state = SUCCESS;
                 end else begin
                     next_state = TRACEBACK;

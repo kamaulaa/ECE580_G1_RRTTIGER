@@ -48,6 +48,7 @@ module core
     wire add_new_point_q;
     wire eval_random_point;
     wire generate_random_point;
+    wire entering_check_steered_point;
     wire entering_check_new_point_q_collision;
     wire check_points_in_square_radius;
     wire drain_arr;
@@ -61,6 +62,8 @@ module core
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
     wire done_detecting_new_point_q_collision;
+    wire steered_point_in_obstacle;
+    wire done_checking_steered_point;
 
     // Datapath instantiation
     datapath #(
@@ -102,6 +105,8 @@ module core
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
+        .steered_point_in_obstacle(steered_point_in_obstacle),
+        .done_checking_steered_point(done_checking_steered_point),
         
         // Inputs from control
         .init_state(init_state),
@@ -114,6 +119,7 @@ module core
         .add_new_point_q(add_new_point_q),
         .eval_random_point(eval_random_point),
         .generate_random_point(generate_random_point),
+        .entering_check_steered_point(entering_check_steered_point),
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr)
@@ -142,6 +148,8 @@ module core
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
+        .steered_point_in_obstacle(steered_point_in_obstacle),
+        .done_checking_steered_point(done_checking_steered_point),
         
         // Outputs to datapath
         .init_state(init_state),
@@ -153,6 +161,7 @@ module core
         .add_new_point_q(add_new_point_q),
         .eval_random_point(eval_random_point),
         .generate_random_point(generate_random_point),
+        .entering_check_steered_point(entering_check_steered_point),
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr)
