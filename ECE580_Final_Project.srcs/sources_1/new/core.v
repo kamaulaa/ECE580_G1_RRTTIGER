@@ -46,7 +46,6 @@ module core
     wire init_state;
     wire add_edge_state;
     wire generate_req;
-    wire window_search_start;
     wire search_neighbor;
     wire entering_search_nearest_neighbor;
     wire add_new_point_q;
@@ -62,7 +61,6 @@ module core
     wire done_draining;
     wire parent_equals_current;
     wire random_point_already_exists;
-    wire window_search_busy;
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
     wire done_detecting_new_point_q_collision;
@@ -105,7 +103,6 @@ module core
         .done_draining(done_draining),
         .parent_equals_current(parent_equals_current),
         .random_point_already_exists(random_point_already_exists),
-        .window_search_busy(window_search_busy),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
@@ -117,7 +114,6 @@ module core
         .add_edge_state(add_edge_state),
         .outer_loop_check_state(1'b0),  // Not used in current implementation
         .generate_req(generate_req),
-        .window_search_start(window_search_start),
         .search_neighbor(search_neighbor),
         .entering_search_nearest_neighbor(entering_search_nearest_neighbor),
         .add_new_point_q(add_new_point_q),
@@ -152,7 +148,6 @@ module core
         .done_draining(done_draining),
         .parent_equals_current(parent_equals_current),
         .random_point_already_exists(random_point_already_exists),
-        .window_search_busy(window_search_busy),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
         .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
@@ -163,7 +158,6 @@ module core
         .init_state(init_state),
         .add_edge_state(add_edge_state),
         .generate_req(generate_req),
-        .window_search_start(window_search_start),
         .search_neighbor(search_neighbor),
         .entering_search_nearest_neighbor(entering_search_nearest_neighbor),
         .add_new_point_q(add_new_point_q),
