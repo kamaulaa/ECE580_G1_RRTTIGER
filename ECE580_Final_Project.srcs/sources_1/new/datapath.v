@@ -11,8 +11,8 @@
 
 module datapath #(
     parameter COORDINATE_WIDTH = 10,
-    parameter NUM_PE = 10,
-    parameter NUM_PE_WIDTH = 4, // log2(NUM_PE)
+    parameter NUM_PE = 5,
+    parameter NUM_PE_WIDTH = 3, // log2(NUM_PE)
     parameter N = 1024,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
     parameter N_BITS = 10, // log2(N)
@@ -89,7 +89,7 @@ reg valid_in;
 
 // Cost calculation signals
 // Read the neighbor's accumulated cost from occupied_points_array using the pipelined parent index
-wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_q][COST_MSB:COST_LSB];
+wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_q][COST_MSB:COST_LSB]; // nearest neighbor's current cost (distance from start)
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
 wire update_min_point = (total_cost < c_min) ? 1'b1 : 1'b0;
@@ -483,6 +483,10 @@ always @( posedge clk) begin
         c_min <= {COST_WIDTH{1'b1}};  // Initialize to max value for minimum comparison
         parent_index_min <= {OUTERMOST_ITER_BITS{1'b0}};
         occupied_array_idx <= {OUTERMOST_ITER_BITS{1'b0}};
+    end else if ( init_state ) begin
+        // Initialize start point as first entry in tree: parent=self (0), coordinates, cost=0
+        occupied_points_array[0] <= {{OUTERMOST_ITER_BITS{1'b0}}, start_y, start_x, {COST_WIDTH{1'b0}}};
+        occupied_array_idx <= {{(OUTERMOST_ITER_BITS-1){1'b0}}, 1'b1};  // Next point will be added at index 1
     end else begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset min cost when starting collision checks for new steered point
