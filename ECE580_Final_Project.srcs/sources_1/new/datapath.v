@@ -389,7 +389,7 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .PARENT_BITS(OUTERMOST_ITER_BITS
         );
 
 
-// Steered point collision check (fast reject optimization)
+// Steered point collision check - for fast rejections
 reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
 reg steered_point_collided;
 
