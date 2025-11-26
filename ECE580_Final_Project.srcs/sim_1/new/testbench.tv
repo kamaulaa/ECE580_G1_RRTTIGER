@@ -2,7 +2,7 @@
 
 // Create Date: 11/12/2025 09:48:23 PM
 // Design Name: 
-// Module Name: testbench
+// Module Name: testbench.tv
 // Project Name: 
 // Reference: https://fpgatutorial.com/how-to-write-a-basic-verilog-testbench/
 
@@ -44,6 +44,7 @@ wire path_found;
 // Exposed states
 wire failure_state;
 wire traceback_state;
+wire output_state;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -69,19 +70,27 @@ core #(
     .obs_right(obs_right),
     .obs_top(obs_top),
     .obs_bottom(obs_bottom),
-    .path_found(path_found)
+    .path_found(path_found),
+    .failure_state(failure_state),
+    .traceback_state(traceback_state),
+    .output_state(output_state)
 );
 
 // clock
-initial begin
-    clk = 1'b0;
-    forever #5 clk = ~clk;
-end
+//initial begin
+//    clk = 1'b0;
+//    forever #5 clk = ~clk;
+//end
+
+initial clk = 1'b0;
+always
+#10 clk = ~clk;
 
 // reset
 initial begin
     reset = 1'b1;
-    #10
+    @(posedge clk);
+    @(posedge clk); 
     reset = 1'b0;
 end
 
@@ -95,10 +104,10 @@ initial begin
     goal_left_bound = 1023 - 10;
     goal_right_bound = 1023;
 
-    obs_left = { 10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022}; // start by making the obstacles all the same, putting them in the upper right corner and small
-    obs_right = { 10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
-    obs_top = { 10'd0, 10'd0, 10'd0, 10'd0, 10'd0};
-    obs_bottom = { 10'd1, 10'd1, 10'd1, 10'd1, 10'd1};
+    obs_left = 0;// { 10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022}; // start by making the obstacles all the same, putting them in the upper right corner and small
+    obs_right = 0;//{ 10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
+    obs_top = 0;// { 10'd0, 10'd0, 10'd0, 10'd0, 10'd0};
+    obs_bottom = 0;// { 10'd1, 10'd1, 10'd1, 10'd1, 10'd1};
 end
 
 // on each clock edge just figure if we got to the final states yet
@@ -109,5 +118,10 @@ always @( posedge clk) begin
         #5 $finish;
     end
 end
+
+always @(posedge clk) begin
+    $display("t=%0t | failure=%b traceback=%b path_found=%b", $time, failure_state, traceback_state, path_found);
+end
+
 
 endmodule
