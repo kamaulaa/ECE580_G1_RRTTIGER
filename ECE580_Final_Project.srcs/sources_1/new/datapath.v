@@ -62,8 +62,37 @@ module datapath #(
     input generate_random_point,
     input entering_check_new_point_q_collision,
     input check_points_in_square_radius,
-    input drain_arr
+    input drain_arr,
+    
+    output [9:0] xrand_wire,
+    output [9:0] yrand_wire,
+    output [9:0] occupied_array_currentidx,
+    output current_array_entry_same_asrandom,
+    output [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
+    output [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
+    output x_equal,
+    output y_equal,
+    
+    output done_detecting_new_point_qcollision,
+    output new_point_qcollided,
+    output [4:0] total_draincycles,
+    output [4:0] detecting_new_point_q_collision_cyclecount    
+    
 );
+
+assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
+assign new_point_qcollided = new_point_q_collided;
+assign total_draincycles = total_drain_cycles;
+assign detecting_new_point_q_collision_cyclecount = detecting_new_point_q_collision_cycle_count;
+
+assign occupied_array_currentidx = occupied_array_current_idx;
+assign current_array_entry_same_asrandom = current_array_entry_same_as_random;
+assign xrand_wire = x_rand_wire;
+assign yrand_wire = y_rand_wire;
+assign x_equal = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire;
+assign y_equal = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire;
+assign occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+assign occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
 
 ////////////////////////////////////////////////////////////////////////
 // SIGNAL DECLARATIONS
@@ -119,7 +148,7 @@ assign path_found = goal_reached && systolic_valid_pair_q; // Only set path_foun
 ////////////////////////////////////////////////////////////////////////
 // CONTROL SIGNALS
 
-assign done_draining = ~(systolic_valid_out ||  systolic_valid_pair_q); // TODO: not finished
+assign done_draining = ~(systolic_valid_out ||  systolic_valid_pair_q); // not used anymore
 
 ////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
@@ -214,7 +243,7 @@ endfunction
     reg [OUTERMOST_ITER_BITS-1:0] new_point_parent_index;
     reg [DIST_WIDTH-1:0] new_point_parent_dist;
 
-    localparam[2:0] tau_denom_bits = 3'b101; // 2^5 = 32 for bit shifting division
+    localparam[2:0] tau_denom_bits = 2'b11; // 2^3 = 8 for bit shifting division
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
         
@@ -269,8 +298,8 @@ endfunction
         end
     end
 
-    wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
-    wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (3'b111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
+    wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (3'b111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
     // NOTE: OR SHOULD THIS BE THIS?
     // wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (5'b11111*new_point_parent_x + x_rand) >> tau_denom_bits;
     // wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (5'b11111*new_point_parent_y + y_rand) >> tau_denom_bits;
@@ -435,14 +464,14 @@ end
 // CHECK NEW POINT Q COLLISION
 // TODO: are we ever checking that new point q isn't inside an obstacle?
 
-reg [NUM_PE_WIDTH-1:0] detecting_new_point_q_collision_cycle_count;
+reg [4:0] detecting_new_point_q_collision_cycle_count; // [NUM_PE_WIDTH-1:0]
 reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 reg found_valid_neighbor; // Track if at least one neighbor produced a valid (collision-free) connection
 
 // new_point_q_collided = 1 if ALL neighbors collided (no valid connections found)
 assign new_point_q_collided = ~found_valid_neighbor;
 // Wait for pipeline to fully drain: nearest_neighbor_count cycles to feed + NUM_PE-1 cycles to drain
-wire [4:0] total_drain_cycles = nearest_neighbor_count + NUM_PE - 1;
+wire [4:0] total_drain_cycles = nearest_neighbor_count + NUM_PE - 1; // LAUREN - maybe +1 here but maybe not... should be fine like this
 assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cycle_count == total_drain_cycles;
 
 always @( posedge clk ) begin
@@ -454,7 +483,7 @@ always @( posedge clk ) begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset flag when starting collision check for new steered point
             found_valid_neighbor <= 1'b0;
-            detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
+            detecting_new_point_q_collision_cycle_count <= 1'b1; // detecting_new_point_q_collision_cycle_count
             detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b1;
         end else if (done_detecting_new_point_q_collision == 1'b1) begin
             detecting_new_point_q_collision_cycle_count <= 0;
@@ -498,20 +527,20 @@ always @( posedge clk) begin
     end else if ( init_state ) begin
         // Initialize start point as first entry in tree: parent=self (0), coordinates, cost=0
         occupied_points_array[0] <= {{OUTERMOST_ITER_BITS{1'b0}}, start_y, start_x, {COST_WIDTH{1'b0}}};
-        occupied_array_idx <= {{(OUTERMOST_ITER_BITS-1){1'b0}}, 1'b1};  // Next point will be added at index 1
+//        occupied_array_idx <= {{(OUTERMOST_ITER_BITS-1){1'b0}}, 1'b1};  // Next point will be added at index 1
     end else begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset min cost when starting collision checks for new steered point
             c_min <= {COST_WIDTH{1'b1}};
-        end else if ( update_min_point ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
+        end else if ( update_min_point &&  systolic_valid_pair_q ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
             x_min <= systolic_val_x2_q;  // use pipelined values - they align with calculated_cost timing
             y_min <= systolic_val_y2_q;  
             c_min <= total_cost; // we need to store total cost (edge + existing) 
             parent_index_min <= systolic_val_parent_index_q; // store the index of this best parent
         end else if ( add_edge_state == 1'b1 ) begin
             // Add steered point to occupied points array with best parent and cost
-            occupied_points_array[occupied_array_idx] <= {parent_index_min, new_point_y, new_point_x, c_min};
-            occupied_array_idx <= occupied_array_idx + 1'b1;
+            occupied_points_array[occupied_array_idx+1'b1] <= {parent_index_min, new_point_y, new_point_x, c_min};
+            occupied_array_idx <= occupied_array_idx + 1'b1; // LAUREN
         end
     end 
 end

@@ -26,7 +26,7 @@ module core_ctrl
     
     output failure_state,
     output traceback_state,
-    output output_state,
+    output [3:0] output_state,
     
     // Inputs from the datapath
     input path_found,
@@ -56,19 +56,21 @@ module core_ctrl
 );
 
     // Define states
-    localparam INIT = 4'b0000;
-    localparam OUTERMOST_LOOP_CHECK = 4'b0001;
-    localparam GENERATE_RANDOM_POINT = 4'b0010;
-    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
-    localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;
-    localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
-    localparam DRAIN_ARR = 4'b0110;
-    localparam ADD_EDGE = 4'b0111;
-    localparam FAILURE = 4'b1000;
-    localparam TRACEBACK = 4'b1001;
-    localparam SUCCESS = 4'b1010;
-    localparam ADD_NEW_POINT_Q = 4'b1011;
-    localparam EVAL_RANDOM_POINT = 4'b1100;
+    localparam INIT = 4'b0000; // 0
+    localparam OUTERMOST_LOOP_CHECK = 4'b0001; // 1
+    localparam GENERATE_RANDOM_POINT = 4'b0010; // 2
+    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011; // 3
+    localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100; // 4
+    localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101; // 5
+    localparam DRAIN_ARR = 4'b0110; // 6
+    localparam ADD_EDGE = 4'b0111; // 7
+    localparam FAILURE = 4'b1000; // 8
+    localparam TRACEBACK = 4'b1001; // 9
+    localparam SUCCESS = 4'b1010; // a
+    localparam ADD_NEW_POINT_Q = 4'b1011; // b
+    localparam EVAL_RANDOM_POINT = 4'b1100; // c
+    // 0 -> 1 -> 2 -> c -> 3 -> b -> 4
+    // init -> outer loop check -> generate rand pt -> eval rand pt -> search nn -> add new pt q -> CHECK_NEW_POINT_Q_COLLISION
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -81,30 +83,93 @@ module core_ctrl
     always @ ( posedge clk ) begin
         if ( reset ) begin
             state <= INIT;
+            outermost_loop_counter <= 0;
         end
         else begin
             state <= next_state;
         end
     end
     
+    always @ ( posedge clk ) begin
+        if ( reset ) begin
+            init_state <= 1'b0;
+            add_edge_state <= 1'b0;
+            generate_req <= 1'b0;
+            window_search_start <= 1'b0;
+            search_neighbor <= 1'b0;
+            entering_search_nearest_neighbor <= 1'b0;
+            add_new_point_q <= 1'b0;
+            eval_random_point <= 1'b0;
+            generate_random_point <= 1'b0;
+            entering_check_new_point_q_collision <= 1'b0;
+            check_points_in_square_radius <= 1'b0;
+            drain_arr <= 1'b0;
+        end
+        else begin
+            if ( state == OUTERMOST_LOOP_CHECK ) begin
+                if ( outermost_loop_check == 1'b1 ) begin
+                    generate_req <= 1'b1;
+                end
+            end
+            
+            else if ( state == GENERATE_RANDOM_POINT ) begin
+                generate_req <= 1'b0;
+                eval_random_point <= 1'b1;
+            end
+            
+            else if ( state == EVAL_RANDOM_POINT ) begin
+                if ( done_evaluating_random_point == 1'b0 ) begin
+                    eval_random_point <= 1'b1;
+                end else if ( random_point_already_exists == 1'b0 ) begin
+                    search_neighbor <= 1'b1;
+                    entering_search_nearest_neighbor <= 1'b1;
+                    eval_random_point <= 1'b0;
+                end else begin // random point generated is an already existing point
+                    generate_req <= 1'b1;
+                    eval_random_point <= 1'b0;
+                end
+            end
+            
+            else if ( state == SEARCH_NEAREST_NEIGHBOR ) begin
+                if (done_with_search_nearest_neighbor == 1'b1) begin
+                    search_neighbor <= 1'b0;
+                    entering_search_nearest_neighbor <= 1'b0;
+                    add_new_point_q <= 1'b1;
+                end else begin
+                    search_neighbor <= 1'b1;
+                    entering_search_nearest_neighbor <= 1'b0;
+                end      
+            end
+            
+            else if ( state == ADD_NEW_POINT_Q ) begin
+                add_new_point_q <= 1'b1;
+                entering_check_new_point_q_collision <= 1'b1;  
+            end            
+            
+            else if ( state == CHECK_NEW_POINT_Q_COLLISION ) begin
+                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
+                    entering_check_new_point_q_collision <= 1'b0;
+                end else if (new_point_q_collided == 1'b1) begin
+                    generate_req <= 1'b1;
+                end else begin
+                    add_edge_state <= 1'b1;
+                end
+            end
+            
+            else if ( state ==  ADD_EDGE ) begin
+                add_edge_state <= 1'b0;
+            end
+
+            
+        end
+    end
+       
     assign failure_state = state == FAILURE;
     assign traceback_state = state == TRACEBACK;
 
     always @ (*) begin
         // Default assignments to prevent latches
         next_state = state;
-        init_state = 1'b0;
-        add_edge_state = 1'b0;
-        generate_req = 1'b0;
-        window_search_start = 1'b0;
-        search_neighbor = 1'b0;
-        entering_search_nearest_neighbor = 1'b0;
-        add_new_point_q = 1'b0;
-        eval_random_point = 1'b0;
-        generate_random_point = 1'b0;
-        entering_check_new_point_q_collision = 1'b0;
-        check_points_in_square_radius = 1'b0;
-        drain_arr = 1'b0;
         
         case (state)
             INIT : begin
@@ -117,7 +182,7 @@ module core_ctrl
                 // This means we still have attempts left at finding a path
                 if (outermost_loop_check == 1'b1) begin 
                     next_state = GENERATE_RANDOM_POINT;
-                    generate_req = 1'b1; // request new random point
+//                    generate_req = 1'b1; // request new random point
                 end
                 else begin // This means we either found a path or ran out of iteration attempts
                     if ( path_found ) begin // We got to the end because we successfully found a path
@@ -132,37 +197,37 @@ module core_ctrl
             GENERATE_RANDOM_POINT: begin
                 // always go to eval the point
                 next_state = EVAL_RANDOM_POINT;
-                generate_req = 1'b0; // make sure this is a 0 to prevent the random point from being overwritten as we check it
-                eval_random_point = 1'b1;
+//                generate_req = 1'b0; // make sure this is a 0 to prevent the random point from being overwritten as we check it
+//                eval_random_point = 1'b1;
             end
             
             EVAL_RANDOM_POINT: begin
-                eval_random_point = 1'b1;
+//                eval_random_point = 1'b1;
                 if ( done_evaluating_random_point == 1'b0 ) begin
                     // stay evaluating
                     next_state = EVAL_RANDOM_POINT;
                 end else if ( random_point_already_exists == 1'b0 ) begin
                     next_state = SEARCH_NEAREST_NEIGHBOR;
-                    search_neighbor = 1'b1;
-                    entering_search_nearest_neighbor = 1'b1;
-                    eval_random_point = 1'b0;
+//                    search_neighbor = 1'b1;
+//                    entering_search_nearest_neighbor = 1'b1;
+//                    eval_random_point = 1'b0;
                 end else begin // random point generated is an already existing point
                     next_state = GENERATE_RANDOM_POINT;
-                    generate_req = 1'b1;
-                    eval_random_point = 1'b0;
+//                    generate_req = 1'b1;
+//                    eval_random_point = 1'b0;
                 end
             end
 
             // there will always be a nearest neighbor
             SEARCH_NEAREST_NEIGHBOR: begin
-                search_neighbor = 1'b1;
+//                search_neighbor = 1'b1;
                 if (done_with_search_nearest_neighbor == 1'b1) begin
-                    search_neighbor = 1'b0;
-                    entering_search_nearest_neighbor = 1'b0;
-                    add_new_point_q = 1'b1;
+//                    search_neighbor = 1'b0;
+//                    entering_search_nearest_neighbor = 1'b0;
+//                    add_new_point_q = 1'b1;
                     next_state = ADD_NEW_POINT_Q; 
                 end else begin
-                    entering_search_nearest_neighbor = 1'b0;
+//                    entering_search_nearest_neighbor = 1'b0;
                     next_state = SEARCH_NEAREST_NEIGHBOR;
                 end
             end
@@ -170,8 +235,8 @@ module core_ctrl
             // new point should be computed here too 
             ADD_NEW_POINT_Q: begin
                 next_state = CHECK_NEW_POINT_Q_COLLISION;
-                add_new_point_q = 1'b1;
-                entering_check_new_point_q_collision = 1'b1; // turn this on for only 1 cycle to let the systolic array take in the new point q and immediately not take any more input
+//                add_new_point_q = 1'b1;
+//                entering_check_new_point_q_collision = 1'b1; // turn this on for only 1 cycle to let the systolic array take in the new point q and immediately not take any more input
             end
 
             // check collision of new point q with obstacles via systolic array
@@ -180,13 +245,13 @@ module core_ctrl
             CHECK_NEW_POINT_Q_COLLISION: begin
                 if ( done_detecting_new_point_q_collision == 1'b0 ) begin
                     next_state = CHECK_NEW_POINT_Q_COLLISION;
-                    entering_check_new_point_q_collision = 1'b0;
+//                    entering_check_new_point_q_collision = 1'b0;
                 end else if (new_point_q_collided == 1'b1) begin
                     next_state = GENERATE_RANDOM_POINT;
-                    generate_req = 1'b1;
+//                    generate_req = 1'b1;
                 end else begin
                     next_state = ADD_EDGE;
-                    add_edge_state = 1'b1;
+//                    add_edge_state = 1'b1;
                 end
             end
 
@@ -210,7 +275,7 @@ module core_ctrl
     */
 
             ADD_EDGE: begin
-                add_edge_state = 1'b1;
+//                add_edge_state = 1'b1;
                 next_state = OUTERMOST_LOOP_CHECK;
             end
 
