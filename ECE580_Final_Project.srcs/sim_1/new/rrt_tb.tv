@@ -1,0 +1,283 @@
+//////////////////////////////////////////////////////////////////////////////////
+
+// Create Date: 11/12/2025 09:48:23 PM
+// Design Name: 
+// Module Name: testbench
+// Project Name: 
+// Reference: https://fpgatutorial.com/how-to-write-a-basic-verilog-testbench/
+
+//////////////////////////////////////////////////////////////////////////////////
+`timescale 1ns/1ps
+module rrt_tb();
+
+localparam COORDINATE_WIDTH = 10;
+localparam NUM_PE = 5;
+localparam NUM_PE_WIDTH = 3;
+localparam N = 1024;
+localparam N_SQUARED = N * N;
+localparam N_BITS = 10;
+localparam OUTERMOST_ITER_MAX = 1024;
+localparam OUTERMOST_ITER_BITS = 10;
+localparam COST_WIDTH = 16;
+localparam ADDR_BITS = 20;
+
+reg clk;
+reg reset;
+
+// Start and goal points
+reg [COORDINATE_WIDTH-1:0] start_x;
+reg [COORDINATE_WIDTH-1:0] start_y;
+reg [COORDINATE_WIDTH-1:0] goal_top_bound;
+reg [COORDINATE_WIDTH-1:0] goal_bottom_bound;
+reg [COORDINATE_WIDTH-1:0] goal_left_bound;
+reg [COORDINATE_WIDTH-1:0] goal_right_bound;
+
+// Obstacle data inputs
+reg [NUM_PE*COORDINATE_WIDTH-1:0] obs_left;
+reg [NUM_PE*COORDINATE_WIDTH-1:0] obs_right;
+reg [NUM_PE*COORDINATE_WIDTH-1:0] obs_top;
+reg [NUM_PE*COORDINATE_WIDTH-1:0] obs_bottom;
+
+// Status outputs
+wire path_found;
+
+// Exposed states
+wire failure_state;
+wire traceback_state;
+
+// Test tracking variables
+integer tests_passed;
+integer tests_failed;
+integer current_test;
+reg [255:0] current_test_name;  // String storage for test name
+time test_start_time;
+reg test_running;
+reg expect_path_found;  // Expected result for current test
+
+// core connects our datapath to controller
+core #(
+    .COORDINATE_WIDTH(COORDINATE_WIDTH),
+    .NUM_PE(NUM_PE),
+    .NUM_PE_WIDTH(NUM_PE_WIDTH),
+    .N(N),
+    .N_SQUARED(N_SQUARED),
+    .N_BITS(N_BITS),
+    .OUTERMOST_ITER_MAX(OUTERMOST_ITER_MAX),
+    .OUTERMOST_ITER_BITS(OUTERMOST_ITER_BITS),
+    .COST_WIDTH(COST_WIDTH),
+    .ADDR_BITS(ADDR_BITS)
+) dut (
+    .clk(clk),
+    .reset(reset),
+    .start_x(start_x),
+    .start_y(start_y),
+    .goal_top_bound(goal_top_bound),
+    .goal_bottom_bound(goal_bottom_bound),
+    .goal_left_bound(goal_left_bound),
+    .goal_right_bound(goal_right_bound),
+    .obs_left(obs_left),
+    .obs_right(obs_right),
+    .obs_top(obs_top),
+    .obs_bottom(obs_bottom),
+    .path_found(path_found)
+);
+
+// clock generation - 100MHz frequency 
+initial begin
+    clk = 1'b0;
+    forever begin
+    #5 clk = ~clk;
+    end
+end
+
+// reset generation 
+initial begin
+    reset = 1'b1;
+    #10
+    reset = 1'b0;
+end
+
+//////////////////////////////////////////////////////////////////////////
+// TEST TASKS
+//////////////////////////////////////////////////////////////////////////
+
+// Test 1: Start at (0,0), goal in upper-right corner, no real obstacles
+task test_no_obstacles;
+begin
+    current_test = 1;
+    current_test_name = "test_no_obstacles";
+    expect_path_found = 1'b1;  // We expect to find a path
+    $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
+    
+    // Start point
+    start_x = {COORDINATE_WIDTH{1'b0}};  // (0, 0)
+    start_y = {COORDINATE_WIDTH{1'b0}};
+    
+    // Goal region: 10x10 box in bottom-right corner
+    goal_top_bound    = 1023 - 10;
+    goal_bottom_bound = 1023;
+    goal_left_bound   = 1023 - 10;
+    goal_right_bound  = 1023;
+    
+    // Place all obstacles in a tiny corner where they won't interfere - overlap in upper right corner
+    obs_left   = {10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022};
+    obs_right  = {10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
+    obs_top    = {10'd0,    10'd0,    10'd0,    10'd0,    10'd0};
+    obs_bottom = {10'd1,    10'd1,    10'd1,    10'd1,    10'd1};
+    
+    // Start timing and set test as running
+    test_start_time = $time;
+    test_running = 1'b1;
+end
+endtask
+
+// Test 2: Start at random point, smaller obstacles
+task test_small_obstacles;
+begin
+    current_test = 2;
+    current_test_name = "test_small_obstacles";
+    expect_path_found = 1'b1;  // We expect to find a path
+    $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
+    
+    // Start point
+    start_x = 10'd247;  // Random point
+    start_y = 10'd389;
+    
+    // Goal region: 10x10 box in upper-right corner
+    goal_top_bound    = 0;
+    goal_bottom_bound = 10;
+    goal_left_bound   = 1023-10;
+    goal_right_bound  = 1023;
+    
+    // Small obstacles - 1x1
+    obs_left   = {10'd5, 10'd803, 10'd600, 10'd85, 10'd905};
+    obs_right  = {10'd6, 10'd804, 10'd601, 10'd86, 10'd906};
+    obs_top    = {10'd15, 10'd6,  10'd500, 10'd900, 10'd723};
+    obs_bottom = {10'd16, 10'd7,  10'd501, 10'd901, 10'd724};
+    
+    test_start_time = $time;
+    test_running = 1'b1;
+end
+endtask
+
+// Test 3: Start at random point, bigger obstacles
+task test_large_obstacles;
+begin
+    current_test = 3;
+    current_test_name = "test_large_obstacles";
+    expect_path_found = 1'b1;  // We expect to find a path (update if testing failure)
+    $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
+    
+    // Start point
+    start_x = 10'd247;  // Random point
+    start_y = 10'd389;
+    
+    // Goal region: 10x10 box in upper-right corner
+    goal_top_bound    = 1023 - 10;
+    goal_bottom_bound = 1023;
+    goal_left_bound   = 1023 - 10;
+    goal_right_bound  = 1023;
+    
+    // Large obstacles - 5x5
+    obs_left   = {10'd5, 10'd803, 10'd600, 10'd85, 10'd905};
+    obs_right  = {10'd10, 10'd808, 10'd605, 10'd90, 10'd910};
+    obs_top    = {10'd15, 10'd6,  10'd500, 10'd900, 10'd723};
+    obs_bottom = {10'd20, 10'd11,  10'd505, 10'd905, 10'd728};
+    
+    test_start_time = $time;
+    test_running = 1'b1;
+end
+endtask
+
+// Test 4: Start at point within goal bounds (should find path immediately)
+task test_start_in_goal;
+begin
+    current_test = 4;
+    current_test_name = "test_start_in_goal";
+    expect_path_found = 1'b1;  // Should find path immediately
+    $display("\n===== Running Test %0d: %s =====", current_test, current_test_name);
+    
+    // Start point inside goal region
+    start_x = 10'd1018;  // Inside the goal box
+    start_y = 10'd1018;
+    
+    // Goal region: 10x10 box in upper-right corner
+    goal_top_bound    = 1023 - 10;
+    goal_bottom_bound = 1023;
+    goal_left_bound   = 1023 - 10;
+    goal_right_bound  = 1023;
+    
+    // No obstacles needed - overlapped in top right corner
+    obs_left   = {10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022};
+    obs_right  = {10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
+    obs_top    = {10'd0,    10'd0,    10'd0,    10'd0,    10'd0};
+    obs_bottom = {10'd1,    10'd1,    10'd1,    10'd1,    10'd1};
+    
+    test_start_time = $time;
+    test_running = 1'b1;
+end
+endtask
+
+//////////////////////////////////////////////////////////////////////////
+// RUN TESTS
+//////////////////////////////////////////////////////////////////////////
+
+initial begin
+    // Initialize counters
+    tests_passed = 0;
+    tests_failed = 0;
+    test_running = 1'b0;
+    
+    // Wait for reset to complete
+    @(negedge reset);
+    #10;
+    
+    // Run test 1
+    test_no_obstacles();
+end
+
+// Monitor for test completion and run next test
+always @(posedge clk) begin
+    if (test_running && (failure_state == 1'b1 || traceback_state == 1'b1)) begin
+        // Record test results
+        test_running = 1'b0;
+        
+        $display("  Duration: %0t ns", $time - test_start_time);
+        $display("  path_found: %b (expected: %b)", path_found, expect_path_found);
+        
+        if (path_found == expect_path_found) begin
+            $display("  Result: PASSED");
+            tests_passed = tests_passed + 1;
+        end else begin
+            $display("  Result: FAILED");
+            tests_failed = tests_failed + 1;
+        end
+        
+        // Apply reset before next test
+        reset = 1'b1;
+        #10;
+        reset = 1'b0;
+        #10;
+        
+        // Start next test based on current_test
+        case (current_test)
+            1: test_small_obstacles();
+            2: test_large_obstacles();
+            3: test_start_in_goal();
+            4: begin
+                // All tests complete - print summary
+                $display("\n");
+                $display("//////////////////////////////////////////");
+                $display("//         TEST SUMMARY                 //");
+                $display("//////////////////////////////////////////");
+                $display("  Total Tests:  %0d", tests_passed + tests_failed);
+                $display("  Passed:       %0d", tests_passed);
+                $display("  Failed:       %0d", tests_failed);
+                $display("//////////////////////////////////////////");
+                #5 $finish;
+            end
+        endcase
+    end
+end
+
+endmodule
