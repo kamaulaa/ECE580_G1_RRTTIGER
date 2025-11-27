@@ -83,9 +83,14 @@ module datapath #(
     output done_checking_steeredpoint,
     output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
     
-    output [3:0] nearest_neighborcount
+    output [3:0] nearest_neighborcount,
+    output searchneighbor,
+    output entering_search_nearestneighbor
        
 );
+
+assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
+assign searchneighbor = search_neighbor;
 
 assign nearest_neighborcount = nearest_neighbor_count;
 
@@ -257,9 +262,6 @@ endfunction
     reg [COORDINATE_WIDTH-1:0] new_point_x, new_point_y;
     reg [COORDINATE_WIDTH-1:0] new_point_parent_x, new_point_parent_y;
         
-    // Need to tell the controller if we can stop searching 
-    assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx);
-
     // Do the distance as combinational logic
     wire [COORDINATE_WIDTH-1:0] dx = x_rand >= occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] ? x_rand - occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] : occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] - x_rand;
     wire [COORDINATE_WIDTH-1:0] dy = y_rand >= occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] ? y_rand - occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] : occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] - y_rand;
@@ -315,6 +317,10 @@ endfunction
 
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
+    // Need to tell the controller if we can stop searching 
+    assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx) && (entering_search_nearest_neighbor == 1'b0);
+    // (search_neighbor == 1'b1) && (entering_search_nearest_neighbor == 1'b0)
+
     always @( posedge clk ) begin
         if (reset) begin
             new_point_x <= {COORDINATE_WIDTH{1'b0}};
@@ -326,8 +332,9 @@ endfunction
 
         end else begin
             // Reset nearest_neighbor_count at the start of each neighbor search
-            if (entering_search_nearest_neighbor == 1'b1) begin
+            if (entering_search_nearest_neighbor == 1'b1) begin // if there's only 1 element in the occupied array don't do this
                 nearest_neighbor_count <= 4'b0;
+                occupied_array_current_idx <= 0;
             end
             // add first ten points into top 10 nearest neighbor array
             else if (nearest_neighbor_count < 4'd10 && search_neighbor == 1'b1) begin
@@ -342,7 +349,7 @@ endfunction
             end
             
             if (search_neighbor == 1'b1) begin
-                occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : occupied_array_current_idx + 1'b1;
+                occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : ( entering_search_nearest_neighbor ? occupied_array_current_idx : occupied_array_current_idx + 1'b1);
             end
 
             // use best neighbor index to generate new point new point AFTER ALL NODES HAVE BEEN TRAVERSED

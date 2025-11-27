@@ -131,13 +131,12 @@ module core_ctrl
             end
             
             else if ( state == SEARCH_NEAREST_NEIGHBOR ) begin
+                entering_search_nearest_neighbor <= 1'b0;
                 if (done_with_search_nearest_neighbor == 1'b1) begin
                     search_neighbor <= 1'b0;
-                    entering_search_nearest_neighbor <= 1'b0;
                     add_new_point_q <= 1'b1;
                 end else begin
                     search_neighbor <= 1'b1;
-                    entering_search_nearest_neighbor <= 1'b0;
                 end      
             end
             

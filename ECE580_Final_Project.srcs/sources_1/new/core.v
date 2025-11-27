@@ -62,7 +62,9 @@ module core
     output done_checking_steeredpoint,
     output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
     
-    output [3:0] nearest_neighborcount
+    output [3:0] nearest_neighborcount,
+    output searchneighbor,
+    output entering_search_nearestneighbor
 
 );
 
@@ -165,7 +167,9 @@ module core
         .done_checking_steeredpoint(done_checking_steeredpoint),
         .steered_point_check_cyclecount(steered_point_check_cyclecount),
         
-        .nearest_neighborcount(nearest_neighborcount)
+        .nearest_neighborcount(nearest_neighborcount),
+        .searchneighbor(searchneighbor),
+        .entering_search_nearestneighbor(entering_search_nearestneighbor)
 
     );
 

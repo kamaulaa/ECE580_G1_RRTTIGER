@@ -66,6 +66,8 @@ wire done_checking_steeredpoint;
 wire [NUM_PE_WIDTH:0] steered_point_check_cyclecount;
 
 wire [3:0] nearest_neighborcount;
+wire entering_search_nearestneighbor;
+wire searchneighbor;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -116,7 +118,9 @@ core #(
     .done_checking_steeredpoint(done_checking_steeredpoint),
     .steered_point_check_cyclecount(steered_point_check_cyclecount),
     
-    .nearest_neighborcount(nearest_neighborcount)
+    .nearest_neighborcount(nearest_neighborcount),
+    .searchneighbor(searchneighbor),
+    .entering_search_nearestneighbor(entering_search_nearestneighbor)
 
 );
 
