@@ -115,9 +115,13 @@ module datapath #(
     output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
     
     output [COORDINATE_WIDTH-1:0] potential_new_pointx,
-    output [COORDINATE_WIDTH-1:0] potential_new_pointy
+    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
+    
+    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx
 
 );
+
+assign occupied_arrayidx = occupied_array_idx;
 
 assign potential_new_pointx = potential_new_point_x;
 assign potential_new_pointy = potential_new_point_y;
@@ -197,7 +201,7 @@ wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
 // Gate update_min_point to only fire during CHECK_NEW_POINT_Q_COLLISION phase
-wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && !entering_check_new_point_q_collision && check_new_point_q_collision;
+wire update_min_point = ((total_cost < c_min) && systolic_valid_pair_q && !entering_check_new_point_q_collision && check_new_point_q_collision);
 
 // Systolic array signals
 wire systolic_valid_out;
@@ -375,6 +379,7 @@ endfunction
     localparam [COORDINATE_WIDTH-1:0] TWO_CONSTANT = {{(COORDINATE_WIDTH-2){1'b0}}, 2'b10};
 
     // Need to tell the controller if we can stop searching 
+    // TODO: Lauren , this is source of error, it's going low always after 1 cycle
     assign done_with_search_nearest_neighbor = (occupied_array_current_idx == occupied_array_idx) && (entering_search_nearest_neighbor == 1'b0);
     // (search_neighbor == 1'b1) && (entering_search_nearest_neighbor == 1'b0)
 
@@ -627,24 +632,23 @@ always @( posedge clk) begin
         c_min <= {COST_WIDTH{1'b1}};  // Initialize to max value for minimum comparison
         parent_index_min <= {OUTERMOST_ITER_BITS{1'b0}};
         occupied_array_idx <= {OUTERMOST_ITER_BITS{1'b0}};
-    end else if ( init_state ) begin
-        // Initialize start point as first entry in tree: parent=self (0), coordinates, cost=0
         occupied_points_array[0] <= {{OUTERMOST_ITER_BITS{1'b0}}, start_y, start_x, {COST_WIDTH{1'b0}}};
-//        occupied_array_idx <= {{(OUTERMOST_ITER_BITS-1){1'b0}}, 1'b1};  // Next point will be added at index 1
     end else begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset min cost when starting collision checks for new steered point
             c_min <= {COST_WIDTH{1'b1}};
-        end else if ( update_min_point && systolic_valid_pair_q ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
+        // problem: occupied_array_idx is never updating. i'm sure that update_min_point=0
+        end else if ( update_min_point ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
             x_min <= systolic_val_x2_q;  // use pipelined values - they align with calculated_cost timing
             y_min <= systolic_val_y2_q;  
             c_min <= total_cost; // we need to store total cost (edge + existing) 
             parent_index_min <= systolic_val_parent_index_q; // store the index of this best parent
         end else if ( add_edge_state == 1'b1 ) begin
             // Add steered point to occupied points array with best parent and cost
-            occupied_points_array[occupied_array_idx+1'b1] <= {parent_index_min, new_point_y, new_point_x, c_min};
-            occupied_array_idx <= occupied_array_idx + 1'b1; // LAUREN
+            occupied_points_array[occupied_array_idx+1'b1] <= {parent_index_min, new_point_y, new_point_x, ( ((total_cost < c_min) && systolic_valid_pair_q) ? total_cost : c_min )};
+            occupied_array_idx <= occupied_array_idx + 1'b1;
         end
     end 
 end
+
 endmodule

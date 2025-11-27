@@ -63,7 +63,7 @@ module core_ctrl
     localparam INIT = 4'b0000;                          // 0
     localparam OUTERMOST_LOOP_CHECK = 4'b0001;          // 1
     localparam GENERATE_RANDOM_POINT = 4'b0010;         // 2
-    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;       // 3
+    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;       // 3 // Why does the SEARCH_NEAREST_NEIGHBOR never get bigger?
     localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;   // 4
     localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101; // 5
     localparam DRAIN_ARR = 4'b0110;                     // 6
@@ -99,7 +99,7 @@ module core_ctrl
     
     always @ ( posedge clk ) begin
         if ( reset ) begin
-            init_state <= 1'b0;
+            init_state <= 1'b1;
             add_edge_state <= 1'b0;
             generate_req <= 1'b0;
             search_neighbor <= 1'b0;
@@ -117,6 +117,10 @@ module core_ctrl
                 if ( outermost_loop_check == 1'b1 ) begin
                     generate_req <= 1'b1;
                 end
+            end
+            
+            else if ( state == INIT ) begin 
+                init_state <= 1'b0;
             end
             
             else if ( state == GENERATE_RANDOM_POINT ) begin
@@ -202,7 +206,6 @@ module core_ctrl
         
         case (state)
             INIT : begin
-                init_state = 1'b1;
                 next_state = OUTERMOST_LOOP_CHECK;
             end
 

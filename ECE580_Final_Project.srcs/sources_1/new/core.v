@@ -100,21 +100,26 @@ module core
     output search_neighbor,
     output done_with_search_nearest_neighbor,
     output [COORDINATE_WIDTH-1:0] potential_new_pointx,
-    output [COORDINATE_WIDTH-1:0] potential_new_pointy
-
+    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
+    
+    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+    
+    output add_edge_state,
+    output entering_search_nearest_neighbor,
+    output entering_check_new_point_q_collision
 );
 
     // Control -> Datapath signals
     wire init_state;
-    wire add_edge_state;
+//    wire add_edge_state;
 //    wire generate_req;
 //    wire search_neighbor;
-    wire entering_search_nearest_neighbor;
+//    wire entering_search_nearest_neighbor;
 //    wire add_new_point_q;
     wire eval_random_point;
     wire generate_random_point;
 //    wire entering_check_steered_point;
-    wire entering_check_new_point_q_collision;
+//    wire entering_check_new_point_q_collision;
     wire check_points_in_square_radius;
     wire drain_arr;
     
@@ -236,8 +241,9 @@ module core
         .best_neighboridx(best_neighboridx),
         
         .potential_new_pointx(potential_new_pointx),
-        .potential_new_pointy(potential_new_pointy)
-
+        .potential_new_pointy(potential_new_pointy),
+        .occupied_arrayidx(occupied_arrayidx)
+       
     );
 
     // Control FSM instantiation

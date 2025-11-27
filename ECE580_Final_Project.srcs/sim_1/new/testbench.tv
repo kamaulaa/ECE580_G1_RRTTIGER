@@ -104,6 +104,10 @@ wire done_with_search_nearest_neighbor;
 wire [COORDINATE_WIDTH-1:0] potential_new_pointx;
 wire [COORDINATE_WIDTH-1:0] potential_new_pointy;
 
+wire [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx;
+wire add_edge_state;
+wire entering_check_new_point_q_collision;
+
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
     .NUM_PE(NUM_PE),
@@ -190,8 +194,11 @@ core #(
     .search_neighbor(search_neighbor),
     .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
     .potential_new_pointx(potential_new_pointx),
-    .potential_new_pointy(potential_new_pointy)
+    .potential_new_pointy(potential_new_pointy),
     
+    .occupied_arrayidx(occupied_arrayidx),
+    .add_edge_state(add_edge_state),
+    .entering_check_new_point_q_collision(entering_check_new_point_q_collision)
 
 );
 
