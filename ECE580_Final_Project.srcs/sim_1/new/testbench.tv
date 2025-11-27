@@ -55,10 +55,15 @@ wire [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
 wire x_equal;
 wire y_equal;  
 
-wire done_detecting_new_point_qcollision;
+wire done_detecting_new_point_q_collision;
 wire new_point_qcollided;
 wire [4:0] total_draincycles;
 wire [4:0] detecting_new_point_q_collision_cyclecount;
+
+wire entering_check_steered_point;
+wire steered_point_in_obstacle; 
+wire done_checking_steeredpoint;
+wire [NUM_PE_WIDTH:0] steered_point_check_cyclecount;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -99,10 +104,15 @@ core #(
     .x_equal(x_equal),
     .y_equal(y_equal),
     
-    .done_detecting_new_point_qcollision(done_detecting_new_point_qcollision),
+    .done_detecting_new_point_q_collision(done_detecting_new_point_q_collision),
     .new_point_qcollided(new_point_qcollided),
     .total_draincycles(total_draincycles),
-    .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount)
+    .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount),
+    
+    .entering_check_steered_point(entering_check_steered_point),
+    .steered_point_in_obstacle(steered_point_in_obstacle),    
+    .done_checking_steeredpoint(done_checking_steeredpoint),
+    .steered_point_check_cyclecount(steered_point_check_cyclecount)
 
 );
 

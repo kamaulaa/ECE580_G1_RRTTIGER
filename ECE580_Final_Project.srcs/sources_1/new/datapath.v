@@ -65,6 +65,7 @@ module datapath #(
     input check_points_in_square_radius,
     input drain_arr,
     
+    // lots of debugging wires
     output [9:0] xrand_wire,
     output [9:0] yrand_wire,
     output [9:0] occupied_array_currentidx,
@@ -74,14 +75,19 @@ module datapath #(
     output x_equal,
     output y_equal,
     
-    output done_detecting_new_point_qcollision,
+//    output done_detecting_new_point_qcollision,
     output new_point_qcollided,
     output [4:0] total_draincycles,
-    output [4:0] detecting_new_point_q_collision_cyclecount    
+    output [4:0] detecting_new_point_q_collision_cyclecount,
     
+    output done_checking_steeredpoint,
+    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount
+       
 );
 
-assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
+assign steered_point_check_cyclecount = steered_point_check_cycle_count;
+
+//assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
 assign new_point_qcollided = new_point_q_collided;
 assign total_draincycles = total_drain_cycles;
 assign detecting_new_point_q_collision_cyclecount = detecting_new_point_q_collision_cycle_count;
@@ -177,8 +183,6 @@ localparam COST_LSB = 0;
 
 reg [ARRAY_WIDTH-1:0] occupied_points_array [0:OUTERMOST_ITER_MAX-1]; // array to store points in first-come order
 reg [OUTERMOST_ITER_BITS-1:0] occupied_array_idx; // counts number of occupied points stored for array indexing
-// reg [N_SQUARED-1:0] occupancy_status_grid; // grid like representation of occupancy - NOT CURRENTLY USED
-
 
 // compute flattened address : y * N + x
 function [N_SQUARED-1:0] idx;
@@ -212,16 +216,6 @@ endfunction
     wire current_array_entry_same_as_random = (occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire) && (occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire); 
     assign done_evaluating_random_point = (eval_random_point == 1'b1) && (current_array_entry_same_as_random || (occupied_array_current_idx == occupied_array_idx));
     assign random_point_already_exists = current_array_entry_same_as_random;
-
-//    output path_found,
-//    output new_point_q_collided,
-//    output done_draining,
-//    output parent_equals_current,
-//    output random_point_already_exists, // valid random point
-//    output window_search_busy, // already looking for nearest neighbor
-//    output done_with_search_nearest_neighbor,
-//    output done_evaluating_random_point,
-//    output done_detecting_new_point_q_collision,
 
     // check if generated random point already exists
     always @( posedge clk ) begin
@@ -428,28 +422,23 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .PARENT_BITS(OUTERMOST_ITER_BITS
 
 // Steered point collision check - for fast rejections
 reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
-reg steered_point_collided;
 
+// If any PE detects steered point inside obstacle, set flag
+wire steered_point_collided = done_checking_steered_point || reset || entering_check_steered_point ? (!systolic_valid_pair ? 1'b1 : 1'b0 ) : 1'b0;
+assign done_checking_steered_point = (steered_point_check_cycle_count == 3'd5);
 assign steered_point_in_obstacle = steered_point_collided;
-assign done_checking_steered_point = (steered_point_check_cycle_count == NUM_PE);
 
 always @(posedge clk) begin
     if (reset) begin
         steered_point_check_cycle_count <= 0;
-        steered_point_collided <= 1'b0;
     end else begin
         if (entering_check_steered_point) begin
+            steered_point_check_cycle_count <= 1'b0;
+        end else if (steered_point_check_cycle_count >= 0 && steered_point_check_cycle_count < 3'd5) begin
             steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
-            steered_point_collided <= 1'b0;  // Reset flag
-        end else if (steered_point_check_cycle_count > 0 && steered_point_check_cycle_count < NUM_PE) begin
-            steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
-            // If any PE detects steered point inside obstacle, set flag
-            if (systolic_valid_out && !systolic_valid_pair) begin
-                steered_point_collided <= 1'b1;
-            end
         end else if (done_checking_steered_point) begin
             steered_point_check_cycle_count <= 0;
-        end
+        end   
     end
 end
 

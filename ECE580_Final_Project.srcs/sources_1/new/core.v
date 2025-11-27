@@ -52,23 +52,27 @@ module core
     output x_equal,
     output y_equal,
     
-    output done_detecting_new_point_qcollision,
+    output done_detecting_new_point_q_collision,
     output new_point_qcollided,
     output [4:0] total_draincycles,
-    output [4:0] detecting_new_point_q_collision_cyclecount    
+    output [4:0] detecting_new_point_q_collision_cyclecount,
+    
+    output entering_check_steered_point,
+    output steered_point_in_obstacle,    
+    output done_checking_steeredpoint,
+    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount
 );
-
 
     // Control -> Datapath signals
     wire init_state;
     wire add_edge_state;
-    wire generate_req;
+//    wire generate_req;
     wire search_neighbor;
     wire entering_search_nearest_neighbor;
     wire add_new_point_q;
     wire eval_random_point;
     wire generate_random_point;
-    wire entering_check_steered_point;
+//    wire entering_check_steered_point;
     wire entering_check_new_point_q_collision;
     wire check_points_in_square_radius;
     wire drain_arr;
@@ -77,12 +81,12 @@ module core
     wire new_point_q_collided;
     wire done_draining;
     wire parent_equals_current;
-    wire random_point_already_exists;
+//    wire random_point_already_exists;
     wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
-    wire done_detecting_new_point_q_collision;
-    wire steered_point_in_obstacle;
-    wire done_checking_steered_point;
+//    wire done_detecting_new_point_q_collision;
+//    wire steered_point_in_obstacle;
+//    wire done_checking_steered_point;
 
     // Datapath instantiation
     datapath #(
@@ -150,10 +154,13 @@ module core
         .x_equal(x_equal),
         .y_equal(y_equal),
         
-        .done_detecting_new_point_qcollision(done_detecting_new_point_qcollision),
+//        .done_detecting_new_point_qcollision(done_detecting_new_point_qcollision),
         .new_point_qcollided(new_point_qcollided),
         .total_draincycles(total_draincycles),
-        .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount)
+        .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount),
+        
+        .done_checking_steeredpoint(done_checking_steeredpoint),
+        .steered_point_check_cyclecount(steered_point_check_cyclecount)
 
     );
 

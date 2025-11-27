@@ -23,6 +23,7 @@ module core_ctrl
     input clk,
     input reset,
     
+    // debugging wires
     output failure_state,
     output traceback_state,
     output [3:0] output_state,
@@ -56,20 +57,21 @@ module core_ctrl
 );
 
     // Define states
-    localparam INIT = 4'b0000;
-    localparam OUTERMOST_LOOP_CHECK = 4'b0001;
-    localparam GENERATE_RANDOM_POINT = 4'b0010;
-    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;
-    localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;
-    localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101;
-    localparam DRAIN_ARR = 4'b0110;
-    localparam ADD_EDGE = 4'b0111;
-    localparam FAILURE = 4'b1000;
-    localparam TRACEBACK = 4'b1001;
-    localparam SUCCESS = 4'b1010;
-    localparam ADD_NEW_POINT_Q = 4'b1011;
-    localparam EVAL_RANDOM_POINT = 4'b1100;
-    localparam CHECK_STEERED_POINT = 4'b1101;
+    localparam INIT = 4'b0000;                          // 0
+    localparam OUTERMOST_LOOP_CHECK = 4'b0001;          // 1
+    localparam GENERATE_RANDOM_POINT = 4'b0010;         // 2
+    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;       // 3
+    localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;   // 4
+    localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101; // 5
+    localparam DRAIN_ARR = 4'b0110;                     // 6
+    localparam ADD_EDGE = 4'b0111;                      // 7
+    localparam FAILURE = 4'b1000;                       // 8
+    localparam TRACEBACK = 4'b1001;                     // 9
+    localparam SUCCESS = 4'b1010;                       // a
+    localparam ADD_NEW_POINT_Q = 4'b1011;               // b
+    localparam EVAL_RANDOM_POINT = 4'b1100;             // c
+    localparam CHECK_STEERED_POINT = 4'b1101;           // d
+    // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> generate rand
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -94,7 +96,6 @@ module core_ctrl
             init_state <= 1'b0;
             add_edge_state <= 1'b0;
             generate_req <= 1'b0;
-            window_search_start <= 1'b0;
             search_neighbor <= 1'b0;
             entering_search_nearest_neighbor <= 1'b0;
             add_new_point_q <= 1'b0;
@@ -142,8 +143,22 @@ module core_ctrl
             
             else if ( state == ADD_NEW_POINT_Q ) begin
                 add_new_point_q <= 1'b1;
-                entering_check_new_point_q_collision <= 1'b1;  
-            end            
+//                entering_check_new_point_q_collision <= 1'b1;  
+                entering_check_steered_point <= 1'b1;
+            end       
+                 
+            else if ( state == CHECK_STEERED_POINT ) begin
+                entering_check_steered_point <= 1'b0;
+                //if (done_checking_steered_point == 1'b0) begin
+//                     entering_check_steered_point <= 1'b0;
+                if (steered_point_in_obstacle == 1'b1) begin
+                    // Steered point is inside obstacle - fast reject, generate new random point
+                     generate_req <= 1'b1;
+                end else begin
+                    // Steered point is valid - proceed to check all neighbor connections
+                     entering_check_new_point_q_collision <= 1'b1;
+                end
+            end
             
             else if ( state == CHECK_NEW_POINT_Q_COLLISION ) begin
                 if ( done_detecting_new_point_q_collision == 1'b0 ) begin
@@ -154,7 +169,7 @@ module core_ctrl
                     add_edge_state <= 1'b1;
                 end
             end
-            
+                        
             else if ( state ==  ADD_EDGE ) begin
                 add_edge_state <= 1'b0;
             end
@@ -181,7 +196,6 @@ module core_ctrl
                 // This means we still have attempts left at finding a path
                 if (outermost_loop_check == 1'b1) begin 
                     next_state = GENERATE_RANDOM_POINT;
-//                    generate_req = 1'b1; // request new random point
                 end
                 else begin // This means we either found a path or ran out of iteration attempts
                     if ( path_found ) begin // We got to the end because we successfully found a path
@@ -196,8 +210,6 @@ module core_ctrl
             GENERATE_RANDOM_POINT: begin
                 // always go to eval the point
                 next_state = EVAL_RANDOM_POINT;
-//                generate_req = 1'b0; // make sure this is a 0 to prevent the random point from being overwritten as we check it
-//                eval_random_point = 1'b1;
             end
             
             EVAL_RANDOM_POINT: begin
@@ -207,26 +219,16 @@ module core_ctrl
                     next_state = EVAL_RANDOM_POINT;
                 end else if ( random_point_already_exists == 1'b0 ) begin
                     next_state = SEARCH_NEAREST_NEIGHBOR;
-//                    search_neighbor = 1'b1;
-//                    entering_search_nearest_neighbor = 1'b1;
-//                    eval_random_point = 1'b0;
                 end else begin // random point generated is an already existing point
                     next_state = GENERATE_RANDOM_POINT;
-//                    generate_req = 1'b1;
-//                    eval_random_point = 1'b0;
                 end
             end
 
             // there will always be a nearest neighbor
             SEARCH_NEAREST_NEIGHBOR: begin
-//                search_neighbor = 1'b1;
                 if (done_with_search_nearest_neighbor == 1'b1) begin
-//                    search_neighbor = 1'b0;
-//                    entering_search_nearest_neighbor = 1'b0;
-//                    add_new_point_q = 1'b1;
                     next_state = ADD_NEW_POINT_Q; 
                 end else begin
-//                    entering_search_nearest_neighbor = 1'b0;
                     next_state = SEARCH_NEAREST_NEIGHBOR;
                 end
             end
@@ -234,8 +236,6 @@ module core_ctrl
             // new point should be computed here too 
             ADD_NEW_POINT_Q: begin
                 next_state = CHECK_STEERED_POINT;
-//                add_new_point_q = 1'b1;
-//                entering_check_steered_point = 1'b1; // Start fast check of steered point only
             end
 
             // Fast check: Is steered point inside any obstacle? (NUM_PE cycles)
@@ -261,18 +261,14 @@ module core_ctrl
             CHECK_NEW_POINT_Q_COLLISION: begin
                 if ( done_detecting_new_point_q_collision == 1'b0 ) begin
                     next_state = CHECK_NEW_POINT_Q_COLLISION;
-//                    entering_check_new_point_q_collision = 1'b0;
                 end else if (new_point_q_collided == 1'b1) begin
                     next_state = GENERATE_RANDOM_POINT;
-//                    generate_req = 1'b1;
                 end else begin
                     next_state = ADD_EDGE;
-//                    add_edge_state = 1'b1;
                 end
             end
 
             ADD_EDGE: begin
-//                add_edge_state = 1'b1;
                 next_state = OUTERMOST_LOOP_CHECK;
             end
 
