@@ -85,9 +85,69 @@ module datapath #(
     
     output [3:0] nearest_neighborcount,
     output searchneighbor,
-    output entering_search_nearestneighbor
-       
+    output entering_search_nearestneighbor,
+    
+    output systolic_validout,
+    output systolic_validpair,
+    
+    input check_steered_point,
+    input check_new_point_q_collision,
+    
+    output update_minpoint,
+    output systolic_valid_pairq,
+    output [COST_WIDTH-1:0] rdcost,
+    output [COST_WIDTH-1:0] calculatedcost,
+    output [COST_WIDTH-1:0] totalcost,
+    output validin,
+    
+    output [COORDINATE_WIDTH-1:0] systolic_valx1,
+    output [COORDINATE_WIDTH-1:0] systolic_valy1,
+    output [COORDINATE_WIDTH-1:0] systolic_valx2,
+    output [COORDINATE_WIDTH-1:0] systolic_valy2,
+    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
+    
+    output [COORDINATE_WIDTH-1:0] new_pointx,
+    output [COORDINATE_WIDTH-1:0] new_pointy,
+    
+    output [COORDINATE_WIDTH-1:0] new_point_parentx,
+    output [COORDINATE_WIDTH-1:0] new_point_parenty,
+    
+    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
+    
+    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
+    output [COORDINATE_WIDTH-1:0] potential_new_pointy
+
 );
+
+assign potential_new_pointx = potential_new_point_x;
+assign potential_new_pointy = potential_new_point_y;
+
+assign best_neighboridx = best_neighbor_idx;
+
+assign new_point_parentx = new_point_parent_x;
+assign new_point_parenty = new_point_parent_y;
+
+
+assign new_pointx = new_point_x;
+assign new_pointy = new_point_y;
+
+assign systolic_valx1 = systolic_val_x1;
+assign systolic_valy1 = systolic_val_y1;
+assign systolic_valx2 = systolic_val_x2;
+assign systolic_valy2 = systolic_val_y2;
+assign systolic_val_parentindex = systolic_val_parent_index;
+
+assign validin = valid_in;
+assign update_minpoint = update_min_point;
+assign systolic_valid_pairq = systolic_valid_pair_q;
+assign rdcost = rd_cost;
+assign calculatedcost = calculated_cost;
+assign totalcost = total_cost;
+
+assign done_checking_steeredpoint = done_checking_steered_point;
+
+assign systolic_validout = systolic_valid_out;
+assign systolic_validpair = systolic_valid_pair;
 
 assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
 assign searchneighbor = search_neighbor;
@@ -137,9 +197,7 @@ wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
 // Gate update_min_point to only fire during CHECK_NEW_POINT_Q_COLLISION phase
-wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && detecting_new_point_q_collision_cycle_count > 0;
-//&& 
-//                        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
+wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && !entering_check_new_point_q_collision && check_new_point_q_collision;
 
 // Systolic array signals
 wire systolic_valid_out;
@@ -283,7 +341,7 @@ endfunction
     reg [DIST_WIDTH-1:0] best_neighbor_dist;
     reg [3:0] worst_neighbor_ten_idx;
     reg [DIST_WIDTH-1:0] worst_neighbor_dist;
-    
+        
     // find best and worst neighbors among top ten neighbors 
     always @(*) begin
         best_neighbor_ten_idx  = 0;
@@ -291,13 +349,13 @@ endfunction
         worst_neighbor_ten_idx = 0;
         worst_neighbor_dist= {DIST_WIDTH{1'b0}}; // min
 
-        if (nearest_neighbor_count != 0) begin
+        if (nearest_neighbor_count != 0) begin // it's a problem because nearest_neighbor_count == 0 at that point
             for (integer i = 0; i < nearest_neighbor_count; i = i + 1) begin
                 // find best neighbor among neighbors in ten_nearest_neighbors
                 if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] < best_neighbor_dist) begin
                     best_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
                     best_neighbor_ten_idx  = i;
-                    best_neighbor_idx = ten_nearest_neighbors[i][IDX_MSB:IDX_LSB];
+                    best_neighbor_idx = ten_nearest_neighbors[i][IDX_MSB:IDX_LSB]; // Han: this is the problem
                 end
                 // find worst neighbor among neighbors in ten_nearest_neighbors
                 if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] > worst_neighbor_dist) begin
@@ -305,7 +363,6 @@ endfunction
                     worst_neighbor_ten_idx  = i;
                 end
             end
-            
         end
     end
 
@@ -329,6 +386,7 @@ endfunction
             new_point_parent_y <= {COORDINATE_WIDTH{1'b0}};
             occupied_array_current_idx <= 0;
             nearest_neighbor_count <= 4'b0;
+            best_neighbor_idx <= {OUTERMOST_ITER_BITS{1'b0}};
 
         end else begin
             // Reset nearest_neighbor_count at the start of each neighbor search
@@ -352,8 +410,11 @@ endfunction
                 occupied_array_current_idx <= done_with_search_nearest_neighbor ? 1'b0 : ( entering_search_nearest_neighbor ? occupied_array_current_idx : occupied_array_current_idx + 1'b1);
             end
 
+            // Han: up to new_point_parent_x is working, it's xxxxx
+            // best_neighbor_idx is the cause, it's undefined
+
             // use best neighbor index to generate new point new point AFTER ALL NODES HAVE BEEN TRAVERSED
-            if (done_with_search_nearest_neighbor == 1'b1 && search_neighbor == 1'b1) begin
+            if (done_with_search_nearest_neighbor == 1'b1 && search_neighbor == 1'b1) begin 
                 new_point_parent_x <= occupied_points_array[best_neighbor_idx][X_MSB:X_LSB];
                 new_point_parent_y <= occupied_points_array[best_neighbor_idx][Y_MSB:Y_LSB];
                 new_point_parent_index <= best_neighbor_idx;
@@ -436,7 +497,7 @@ oc_array #(.COORDINATE_WIDTH(COORDINATE_WIDTH), .PARENT_BITS(OUTERMOST_ITER_BITS
 reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
 
 // If any PE detects steered point inside obstacle, set flag
-wire steered_point_collided = done_checking_steered_point || reset || entering_check_steered_point ? (!systolic_valid_pair ? 1'b1 : 1'b0 ) : 1'b0;
+wire steered_point_collided = done_checking_steered_point ? (!systolic_valid_pair ? 1'b1 : 1'b0 ) : 1'b0;
 assign done_checking_steered_point = (steered_point_check_cycle_count == 3'd5);
 assign steered_point_in_obstacle = steered_point_collided;
 
@@ -446,9 +507,10 @@ always @(posedge clk) begin
     end else begin
         if (entering_check_steered_point) begin
             steered_point_check_cycle_count <= 1'b0;
-        end else if (steered_point_check_cycle_count >= 0 && steered_point_check_cycle_count < 3'd5) begin
+        end else if (check_steered_point == 1'b1 && (steered_point_check_cycle_count >= 0 && steered_point_check_cycle_count < 3'd5)) begin
             steered_point_check_cycle_count <= steered_point_check_cycle_count + 1'b1;
-        end else if (done_checking_steered_point) begin
+        end
+        else if (done_checking_steered_point) begin
             steered_point_check_cycle_count <= 0;
         end   
     end
@@ -464,7 +526,7 @@ always @(posedge clk) begin
         valid_in <= 1'b0;
     end
     else begin
-        if (entering_check_steered_point) begin
+        if (entering_check_steered_point) begin // entering_
             // For steered point check: feed steered point with itself (dummy neighbor)
             // We only care if steered point (x1,y1) is inside an obstacle
             nearest_neighbors_checked <= 4'b0;
@@ -473,7 +535,7 @@ always @(posedge clk) begin
             nb_y <= new_point_y;
             valid_in <= 1'b1;
         end
-        else if (entering_check_new_point_q_collision) begin
+        else if (entering_check_new_point_q_collision) begin // entering_
             // Load first neighbor (index 0) to be fed into systolic array on next clock edge
             nearest_neighbors_checked <= 4'b1;  // Counter = 1 means we've queued neighbor 0
             nb_index <= ten_nearest_neighbors[0][IDX_MSB:IDX_LSB];
@@ -481,7 +543,7 @@ always @(posedge clk) begin
             nb_y <= occupied_points_array[ten_nearest_neighbors[0][IDX_MSB:IDX_LSB]][Y_MSB:Y_LSB];
             valid_in <= (nearest_neighbor_count > 0) ? 1'b1 : 1'b0;
         end
-        else if (nearest_neighbors_checked < nearest_neighbor_count) begin
+        else if (check_new_point_q_collision && (nearest_neighbors_checked < nearest_neighbor_count)) begin
             // Feed one neighbor per cycle into the systolic array
             nb_index <= ten_nearest_neighbors[nearest_neighbors_checked][IDX_MSB:IDX_LSB];
             nb_x <= occupied_points_array[ten_nearest_neighbors[nearest_neighbors_checked][IDX_MSB:IDX_LSB]][X_MSB:X_LSB];
@@ -508,7 +570,8 @@ reg [4:0] detecting_new_point_q_collision_cycle_count;  // 5 bits to hold up to 
 reg found_valid_neighbor; // Track if at least one neighbor produced a valid (collision-free) connection
 
 // new_point_q_collided = 1 if ALL neighbors collided (no valid connections found)
-assign new_point_q_collided = ~found_valid_neighbor;
+assign new_point_q_collided = (systolic_valid_pair==1'b1 || found_valid_neighbor == 1'b1) ? 1'b0 : 1'b1;
+
 // Wait for pipeline to fully drain: nearest_neighbor_count cycles to feed + NUM_PE-1 cycles to drain
 wire [4:0] total_drain_cycles = nearest_neighbor_count + NUM_PE - 1; // LAUREN - maybe +1 here but maybe not... should be fine like this
 assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cycle_count == total_drain_cycles;
@@ -516,26 +579,19 @@ assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cy
 always @( posedge clk ) begin
     if ( reset ) begin
         detecting_new_point_q_collision_cycle_count <= 0;
-//        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
         found_valid_neighbor <= 1'b0;
     end else begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset flag when starting collision check for new steered point
             found_valid_neighbor <= 1'b0;
             detecting_new_point_q_collision_cycle_count <= 1'b0; // detecting_new_point_q_collision_cycle_count
-//            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b1;
         end else if (done_detecting_new_point_q_collision == 1'b1) begin
             detecting_new_point_q_collision_cycle_count <= 0;
-//            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
         end else begin    
-            if (detecting_new_point_q_collision_cycle_count >= 0 && detecting_new_point_q_collision_cycle_count < total_drain_cycles) begin
+            if (check_new_point_q_collision == 1'b1 && (detecting_new_point_q_collision_cycle_count >= 0 && detecting_new_point_q_collision_cycle_count < total_drain_cycles)) begin
                 detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
             end
-            
-//            if (detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle == 1'b1) begin
-//                detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
-//            end
-            
+      
             // Set flag if we find any valid collision-free connection
             if ( detecting_new_point_q_collision_cycle_count >= NUM_PE ) begin // if the first element has gotten through the pes
                 if (systolic_valid_pair == 1'b1) begin
@@ -579,7 +635,7 @@ always @( posedge clk) begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset min cost when starting collision checks for new steered point
             c_min <= {COST_WIDTH{1'b1}};
-        end else if ( update_min_point &&  systolic_valid_pair_q ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
+        end else if ( update_min_point && systolic_valid_pair_q ) begin //stores valid nearest neighbor point with minimal cost calculated for connection to random point
             x_min <= systolic_val_x2_q;  // use pipelined values - they align with calculated_cost timing
             y_min <= systolic_val_y2_q;  
             c_min <= total_cost; // we need to store total cost (edge + existing) 

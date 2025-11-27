@@ -27,6 +27,7 @@ module core_ctrl
     output failure_state,
     output traceback_state,
     output [3:0] output_state,
+    output [9:0] outermost_loopcounter,
     
     // Inputs from the datapath
     input path_found,
@@ -52,7 +53,9 @@ module core_ctrl
     output reg entering_check_steered_point,
     output reg entering_check_new_point_q_collision,
     output reg check_points_in_square_radius,
-    output reg drain_arr
+    output reg drain_arr,
+    output reg check_steered_point,
+    output reg check_new_point_q_collision
     
 );
 
@@ -71,7 +74,10 @@ module core_ctrl
     localparam ADD_NEW_POINT_Q = 4'b1011;               // b
     localparam EVAL_RANDOM_POINT = 4'b1100;             // c
     localparam CHECK_STEERED_POINT = 4'b1101;           // d
-    // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> generate rand
+    // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> add edge
+    // 0 -> 1 -> 2 -> c -> 3 -> b -> d -> 4 -> 7
+
+    assign outermost_loopcounter = outermost_loop_counter;
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
@@ -104,6 +110,7 @@ module core_ctrl
             entering_check_new_point_q_collision <= 1'b0;
             check_points_in_square_radius <= 1'b0;
             drain_arr <= 1'b0;
+            check_steered_point <= 1'b0;
         end
         else begin
             if ( state == OUTERMOST_LOOP_CHECK ) begin
@@ -141,32 +148,40 @@ module core_ctrl
             end
             
             else if ( state == ADD_NEW_POINT_Q ) begin
-                add_new_point_q <= 1'b1;
-//                entering_check_new_point_q_collision <= 1'b1;  
+                add_new_point_q <= 1'b0;
                 entering_check_steered_point <= 1'b1;
             end       
                  
             else if ( state == CHECK_STEERED_POINT ) begin
-                entering_check_steered_point <= 1'b0;
-                //if (done_checking_steered_point == 1'b0) begin
-//                     entering_check_steered_point <= 1'b0;
-                if (steered_point_in_obstacle == 1'b1) begin
+                if ( done_checking_steered_point == 1'b0 ) begin
+                    check_steered_point <= 1'b1;
+                    entering_check_steered_point <= 1'b0;
+                end else if (steered_point_in_obstacle == 1'b1) begin
                     // Steered point is inside obstacle - fast reject, generate new random point
-                     generate_req <= 1'b1;
+                    check_steered_point <= 1'b0;
+                    generate_req <= 1'b1;
+                    entering_check_steered_point <= 1'b0;
                 end else begin
                     // Steered point is valid - proceed to check all neighbor connections
-                     entering_check_new_point_q_collision <= 1'b1;
+                    entering_check_new_point_q_collision <= 1'b1;
+                    check_steered_point <= 1'b0;
+                    entering_check_steered_point <= 1'b0;
+                    check_new_point_q_collision <= 1'b1;
                 end
             end
             
             else if ( state == CHECK_NEW_POINT_Q_COLLISION ) begin
-                entering_check_new_point_q_collision <= 1'b0;
-//                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
-//                    entering_check_new_point_q_collision <= 1'b0;
-                if (new_point_q_collided == 1'b1) begin
+                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
+                    check_new_point_q_collision <= 1'b1;
+                    entering_check_new_point_q_collision <= 1'b0;
+                end else if (new_point_q_collided == 1'b1) begin
                     generate_req <= 1'b1;
+                    check_new_point_q_collision <= 1'b0;
+                    entering_check_new_point_q_collision <= 1'b0;
                 end else begin
+                    check_new_point_q_collision <= 1'b0;
                     add_edge_state <= 1'b1;
+                    entering_check_new_point_q_collision <= 1'b0;
                 end
             end
                         
