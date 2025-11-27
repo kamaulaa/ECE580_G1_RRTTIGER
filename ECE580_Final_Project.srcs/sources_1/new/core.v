@@ -5,16 +5,16 @@
 module core
 #(
     // ADJUSTABLE GRID PARAMETERS
-    parameter COORDINATE_WIDTH = 10,
+    parameter COORDINATE_WIDTH = 7,
     parameter NUM_PE = 5,
     parameter NUM_PE_WIDTH = 3,
-    parameter N = 1024,
+    parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter N_BITS = 10,
-    parameter OUTERMOST_ITER_MAX = 1024,
-    parameter OUTERMOST_ITER_BITS = 10,
-    parameter COST_WIDTH = 16,
-    parameter ADDR_BITS = 20
+    parameter N_BITS = 7,
+    parameter OUTERMOST_ITER_MAX = 128,
+    parameter OUTERMOST_ITER_BITS = 7,
+    parameter COST_WIDTH = 16, // TODO: maybe change the cost width --> max it would take up 19 bits, so maybe we could truncate it more
+    parameter ADDR_BITS = 14
 )
 (
     input  clk,
@@ -43,12 +43,12 @@ module core
     output [3:0] output_state,
     output generate_req,
     output random_point_already_exists,
-    output [9:0] xrand_wire,
-    output [9:0] yrand_wire,
-    output [9:0] occupied_array_currentidx,
+    output [COORDINATE_WIDTH-1:0] xrand_wire,
+    output [COORDINATE_WIDTH-1:0] yrand_wire,
+    output [COORDINATE_WIDTH-1:0] occupied_array_currentidx,
     output current_array_entry_same_asrandom,
-    output [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
-    output [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
+    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
+    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
     output x_equal,
     output y_equal,
     
@@ -69,7 +69,7 @@ module core
     output systolic_validout,
     output systolic_validpair,
     
-    output [9:0] outermost_loopcounter,
+    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
     output check_steered_point,
     output check_new_point_q_collision,
     
@@ -106,7 +106,15 @@ module core
     
     output add_edge_state,
     output entering_search_nearest_neighbor,
-    output entering_check_new_point_q_collision
+    output entering_check_new_point_q_collision,
+    output do_traceback,
+    
+    output [COST_WIDTH-1:0] final_cost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_x_coord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_y_coord, // this changes each cycle of traceback
+    
+    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
+    output [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr
 );
 
     // Control -> Datapath signals
@@ -126,7 +134,7 @@ module core
     // Datapath -> Control signals
     wire new_point_q_collided;
     wire done_draining;
-    wire parent_equals_current;
+    wire done_traceback;
 //    wire random_point_already_exists;
 //    wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
@@ -169,7 +177,7 @@ module core
         .path_found(path_found),
         .new_point_q_collided(new_point_q_collided),
         .done_draining(done_draining),
-        .parent_equals_current(parent_equals_current),
+        .done_traceback(done_traceback),
         .random_point_already_exists(random_point_already_exists),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
@@ -191,6 +199,7 @@ module core
         .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr),
+        .do_traceback(do_traceback),
         
         .xrand_wire(xrand_wire),
         .yrand_wire(yrand_wire),
@@ -242,7 +251,13 @@ module core
         
         .potential_new_pointx(potential_new_pointx),
         .potential_new_pointy(potential_new_pointy),
-        .occupied_arrayidx(occupied_arrayidx)
+        .occupied_arrayidx(occupied_arrayidx),
+        
+        .final_cost(final_cost),
+        .final_x_coord(final_x_coord),
+        .final_y_coord(final_y_coord),
+        .tracebackptr(tracebackptr),
+        .new_traceback_ptr(new_traceback_ptr)
        
     );
 
@@ -269,7 +284,7 @@ module core
         .path_found(path_found),
         .new_point_q_collided(new_point_q_collided),
         .done_draining(done_draining),
-        .parent_equals_current(parent_equals_current),
+        .done_traceback(done_traceback),
         .random_point_already_exists(random_point_already_exists),
         .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
         .done_evaluating_random_point(done_evaluating_random_point),
@@ -291,6 +306,7 @@ module core
         .check_points_in_square_radius(check_points_in_square_radius),
         .drain_arr(drain_arr),
         .check_steered_point(check_steered_point),
-        .check_new_point_q_collision(check_new_point_q_collision)
+        .check_new_point_q_collision(check_new_point_q_collision),
+        .do_traceback(do_traceback)
     );
 endmodule

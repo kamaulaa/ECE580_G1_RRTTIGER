@@ -10,16 +10,16 @@
 
 
 module datapath #(
-    parameter COORDINATE_WIDTH = 10,
+    parameter COORDINATE_WIDTH = 7,
     parameter NUM_PE = 5,
     parameter NUM_PE_WIDTH = 3, // log2(NUM_PE)
-    parameter N = 1024,
+    parameter N = 128,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
-    parameter N_BITS = 10, // log2(N)
-    parameter OUTERMOST_ITER_MAX = 1024, // number of points that can be generated & stored until failure
-    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
+    parameter N_BITS = 7, // log2(N)
+    parameter OUTERMOST_ITER_MAX = 128, // number of points that can be generated & stored until failure
+    parameter OUTERMOST_ITER_BITS = 7, // log2(OUTERMOST_ITER_MAX)
     parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
-    parameter ADDR_BITS = 20    // log2(N_SQUARED) = log2(1,048,576) = 20
+    parameter ADDR_BITS = 14    // log2(N_SQUARED) = log2(1,048,576) = 20
 )(
     input clk,
     input reset,
@@ -42,7 +42,7 @@ module datapath #(
     output path_found,
     output new_point_q_collided,
     output done_draining,
-    output parent_equals_current,
+    output done_traceback,
     output random_point_already_exists, // valid random point
     output done_with_search_nearest_neighbor,
     output done_evaluating_random_point,
@@ -64,14 +64,15 @@ module datapath #(
     input entering_check_new_point_q_collision,
     input check_points_in_square_radius,
     input drain_arr,
+    input do_traceback,
     
     // lots of debugging wires
-    output [9:0] xrand_wire,
-    output [9:0] yrand_wire,
-    output [9:0] occupied_array_currentidx,
+    output [COORDINATE_WIDTH-1:0] xrand_wire,
+    output [COORDINATE_WIDTH-1:0] yrand_wire,
+    output [COORDINATE_WIDTH-1:0] occupied_array_currentidx,
     output current_array_entry_same_asrandom,
-    output [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
-    output [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
+    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
+    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
     output x_equal,
     output y_equal,
     
@@ -117,9 +118,18 @@ module datapath #(
     output [COORDINATE_WIDTH-1:0] potential_new_pointx,
     output [COORDINATE_WIDTH-1:0] potential_new_pointy,
     
-    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx
+    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+    
+    output [COST_WIDTH-1:0] final_cost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_x_coord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_y_coord, // this changes each cycle of traceback
+    
+    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
+    output [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr
 
 );
+
+assign tracebackptr = traceback_ptr;
 
 assign occupied_arrayidx = occupied_array_idx;
 
@@ -503,7 +513,7 @@ reg [NUM_PE_WIDTH-1:0] steered_point_check_cycle_count;
 
 // If any PE detects steered point inside obstacle, set flag
 wire steered_point_collided = done_checking_steered_point ? (!systolic_valid_pair ? 1'b1 : 1'b0 ) : 1'b0;
-assign done_checking_steered_point = (steered_point_check_cycle_count == 3'd5);
+assign done_checking_steered_point = (steered_point_check_cycle_count == NUM_PE);
 assign steered_point_in_obstacle = steered_point_collided;
 
 always @(posedge clk) begin
@@ -649,6 +659,25 @@ always @( posedge clk) begin
             occupied_array_idx <= occupied_array_idx + 1'b1;
         end
     end 
+end
+
+reg [OUTERMOST_ITER_BITS-1:0] traceback_ptr;
+assign done_traceback = traceback_ptr == 0;
+assign [COST_WIDTH-1:0] final_cost = occupied_points_array[occupied_array_idx][COST_MSB:COST_LSB];
+assign [COORDINATE_WIDTH-1:0] final_x_coord = occupied_points_array[traceback_ptr][X_MSB:X_LSB];
+assign [COORDINATE_WIDTH-1:0] final_y_coord = occupied_points_array[traceback_ptr][Y_MSB:Y_LSB];
+assign [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr = occupied_points_array[traceback_ptr][PARENT_IDX_MSB:PARENT_IDX_LSB];
+
+always @( posedge clk ) begin
+    if ( reset )  begin
+        traceback_ptr <= 0;
+    end else begin
+        if ( !do_traceback ) begin
+            traceback_ptr <= occupied_array_idx;
+        end else if ( do_traceback ) begin
+            traceback_ptr <= new_traceback_ptr;
+        end
+    end
 end
 
 endmodule

@@ -10,16 +10,16 @@
 `timescale 1ns/1ps
 module testbench;
 
-parameter COORDINATE_WIDTH = 10;
+parameter COORDINATE_WIDTH = 7;
 parameter NUM_PE = 5;
 parameter NUM_PE_WIDTH = 3;
-parameter N = 1024;
+parameter N = 128;
 parameter N_SQUARED = N * N;
-parameter N_BITS = 10;
-parameter OUTERMOST_ITER_MAX = 1024;
-parameter OUTERMOST_ITER_BITS = 10;
-parameter COST_WIDTH = 16;
-parameter ADDR_BITS = 20;
+parameter N_BITS = 7;
+parameter OUTERMOST_ITER_MAX = 128;
+parameter OUTERMOST_ITER_BITS = 7;
+parameter COST_WIDTH = 16; // change the cost width
+parameter ADDR_BITS = 14;
 
 reg clk;
 reg reset;
@@ -44,14 +44,15 @@ wire path_found;
 // Exposed states
 wire failure_state;
 wire traceback_state;
+
 wire[3:0] output_state;
 wire random_point_already_exists;
-wire [9:0] xrand_wire;
-wire [9:0] yrand_wire;
-wire [9:0] occupied_array_currentidx;
+wire [COORDINATE_WIDTH-1:0] xrand_wire;
+wire [COORDINATE_WIDTH-1:0] yrand_wire;
+wire [COORDINATE_WIDTH-1:0] occupied_array_currentidx;
 wire current_array_entry_same_asrandom;
-wire [9:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB;
-wire [9:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
+wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB;
+wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
 wire x_equal;
 wire y_equal;  
 
@@ -72,7 +73,7 @@ wire searchneighbor;
 wire systolic_validout;
 wire systolic_validpair;
 
-wire [9:0] outermost_loopcounter;
+wire [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter;
 wire check_steered_point;
 wire check_new_point_q_collision;
 
@@ -198,15 +199,16 @@ core #(
     
     .occupied_arrayidx(occupied_arrayidx),
     .add_edge_state(add_edge_state),
-    .entering_check_new_point_q_collision(entering_check_new_point_q_collision)
+    .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
+    .do_traceback(do_traceback),
+    
+    .final_cost(final_cost),
+    .final_x_coord(final_x_coord),
+    .final_y_coord(final_y_coord),
+    .tracebackptr(tracebackptr),
+    .new_traceback_ptr(new_traceback_ptr)
 
 );
-
-// clock
-//initial begin
-//    clk = 1'b0;
-//    forever #5 clk = ~clk;
-//end
 
 initial clk = 1'b0;
 always
@@ -225,43 +227,36 @@ initial begin
     start_x = {COORDINATE_WIDTH{1'b0}}; // start at (0,0)
     start_y = {COORDINATE_WIDTH{1'b0}};
     
-    goal_top_bound = 1023 - 10; // make the goal box 10x10 in the opposite corner
-    goal_bottom_bound = 1023;
-    goal_left_bound = 1023 - 10;
-    goal_right_bound = 1023;
+    goal_top_bound = 127 - 10; // make the goal box 10x10 in the opposite corner
+    goal_bottom_bound = 127;
+    goal_left_bound = 127 - 10;
+    goal_right_bound = 127;
 
-    obs_left = { 10'd1022, 10'd1022, 10'd1022, 10'd1022, 10'd1022}; // start by making the obstacles all the same, putting them in the upper right corner and small
-    obs_right = { 10'd1023, 10'd1023, 10'd1023, 10'd1023, 10'd1023};
-    obs_top = { 10'd0, 10'd0, 10'd0, 10'd0, 10'd0};
-    obs_bottom = { 10'd1, 10'd1, 10'd1, 10'd1, 10'd1};
+    obs_left = { 7'd126, 7'd126, 7'd126, 7'd126, 7'd126}; // start by making the obstacles all the same, putting them in the upper right corner and small
+    obs_right = { 7'd127, 7'd127, 7'd127, 7'd127, 7'd127};
+    obs_top = { 7'd0, 7'd0, 7'd0, 7'd0, 7'd0};
+    obs_bottom = { 7'd1, 7'd1, 7'd1, 7'd1, 7'd1};
 end
-
-//forever begin
-//    // on each clock edge just figure if we got to the final states yet
-//    always @( posedge clk) begin
-//        if ( failure_state == 1'b1 || traceback_state == 1'b1 ) begin
-//            $display("time: %0t", $time);
-//            $display("path_found: %b", path_found);
-//            #5 $finish;
-//        end
-//    end
-//end
 
 initial begin
     forever begin @(posedge clk);
-        if (failure_state || traceback_state) begin
+        if (failure_state) begin
             $display("time: %0t", $time);
-            $display("path_found: %b", path_found);
+            $display("path not found"); // need to make sure the right stuff is printed in traceback and failure to see how far we got
+            $finish;
+        end else if (traceback_state) begin
+            $display("path found");
+            $display("final cost: %d", final_cost);
+            $display("(x,y): (%d, %d)", final_x_coord, final_y_coord);
+        end else if (output_state == 4'b1010) begin
             $finish;
         end
     end
 end
 
-
-
-always @(posedge clk) begin
-    $display("t=%0t | failure=%b traceback=%b path_found=%b", $time, failure_state, traceback_state, path_found);
-end
+//always @(posedge clk) begin
+//    $display("t=%0t | failure=%b traceback=%b path_found=%b", $time, failure_state, traceback_state, path_found);
+//end
 
 
 endmodule

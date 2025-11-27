@@ -11,13 +11,13 @@
 module core_ctrl
 #(
     // ADJUSTABLE GRID PARAMETERS
-    parameter N = 1024,
+    parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = 1024, // NEED THIS?
-    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
-    parameter X_BITS = 10, // log2(GRID_WIDTH)
-    parameter Y_BITS = 10, // log2(GRID_HEIGHT )
-    parameter ADDR_BITS = 20 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
+    parameter OUTERMOST_ITER_MAX = 128, // NEED THIS?
+    parameter OUTERMOST_ITER_BITS = 7, // log2(OUTERMOST_ITER_MAX)
+    parameter X_BITS = 7, // log2(GRID_WIDTH)
+    parameter Y_BITS = 7, // log2(GRID_HEIGHT )
+    parameter ADDR_BITS = 14 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
 )
 (
     input clk,
@@ -27,13 +27,13 @@ module core_ctrl
     output failure_state,
     output traceback_state,
     output [3:0] output_state,
-    output [9:0] outermost_loopcounter,
+    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
     
     // Inputs from the datapath
     input path_found,
     input new_point_q_collided,
     input done_draining,
-    input parent_equals_current,
+    input done_traceback,
     input random_point_already_exists,
     input done_with_search_nearest_neighbor,
     input done_evaluating_random_point,
@@ -55,7 +55,8 @@ module core_ctrl
     output reg check_points_in_square_radius,
     output reg drain_arr,
     output reg check_steered_point,
-    output reg check_new_point_q_collision
+    output reg check_new_point_q_collision,
+    output reg do_traceback
     
 );
 
@@ -111,11 +112,14 @@ module core_ctrl
             check_points_in_square_radius <= 1'b0;
             drain_arr <= 1'b0;
             check_steered_point <= 1'b0;
+            do_traceback <= 1'b0;
         end
         else begin
             if ( state == OUTERMOST_LOOP_CHECK ) begin
                 if ( outermost_loop_check == 1'b1 ) begin
                     generate_req <= 1'b1;
+                end else begin 
+                    do_traceback <= 1'b1;
                 end
             end
             
@@ -191,6 +195,22 @@ module core_ctrl
                         
             else if ( state ==  ADD_EDGE ) begin
                 add_edge_state <= 1'b0;
+            end
+            
+            else if ( state == TRACEBACK ) begin 
+                if ( done_traceback == 1'b0) begin 
+                    do_traceback <= 1'b1;
+                end else begin
+                    do_traceback <= 1'b0;
+                end
+            end
+            
+            else if ( state == FAILURE ) begin
+                if ( done_traceback == 1'b0) begin 
+                    do_traceback <= 1'b1;
+                end else begin
+                    do_traceback <= 1'b0;
+                end            
             end
 
             
@@ -291,11 +311,16 @@ module core_ctrl
             end
 
             FAILURE: begin
-                next_state = FAILURE;
+//                next_state = FAILURE;
+                if (done_traceback == 1'b1) begin
+                    next_state = SUCCESS; // this is just for debugging
+                end else begin
+                    next_state = TRACEBACK;
+                end
             end
 
             TRACEBACK: begin
-                if (parent_equals_current == 1'b1) begin // has not been implemented
+                if (done_traceback == 1'b1) begin
                     next_state = SUCCESS;
                 end else begin
                     next_state = TRACEBACK;
