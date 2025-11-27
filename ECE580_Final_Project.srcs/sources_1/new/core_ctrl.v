@@ -161,9 +161,10 @@ module core_ctrl
             end
             
             else if ( state == CHECK_NEW_POINT_Q_COLLISION ) begin
-                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
-                    entering_check_new_point_q_collision <= 1'b0;
-                end else if (new_point_q_collided == 1'b1) begin
+                entering_check_new_point_q_collision <= 1'b0;
+//                if ( done_detecting_new_point_q_collision == 1'b0 ) begin
+//                    entering_check_new_point_q_collision <= 1'b0;
+                if (new_point_q_collided == 1'b1) begin
                     generate_req <= 1'b1;
                 end else begin
                     add_edge_state <= 1'b1;

@@ -60,7 +60,10 @@ module core
     output entering_check_steered_point,
     output steered_point_in_obstacle,    
     output done_checking_steeredpoint,
-    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount
+    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
+    
+    output [3:0] nearest_neighborcount
+
 );
 
     // Control -> Datapath signals
@@ -160,7 +163,9 @@ module core
         .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount),
         
         .done_checking_steeredpoint(done_checking_steeredpoint),
-        .steered_point_check_cyclecount(steered_point_check_cyclecount)
+        .steered_point_check_cyclecount(steered_point_check_cyclecount),
+        
+        .nearest_neighborcount(nearest_neighborcount)
 
     );
 

@@ -81,9 +81,13 @@ module datapath #(
     output [4:0] detecting_new_point_q_collision_cyclecount,
     
     output done_checking_steeredpoint,
-    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount
+    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
+    
+    output [3:0] nearest_neighborcount
        
 );
+
+assign nearest_neighborcount = nearest_neighbor_count;
 
 assign steered_point_check_cyclecount = steered_point_check_cycle_count;
 
@@ -128,8 +132,9 @@ wire [COST_WIDTH-1:0] rd_cost = occupied_points_array[systolic_val_parent_index_
 wire [COST_WIDTH-1:0] calculated_cost; // new connection cost from quantization block
 wire [COST_WIDTH-1:0] total_cost = calculated_cost + rd_cost;
 // Gate update_min_point to only fire during CHECK_NEW_POINT_Q_COLLISION phase
-wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && 
-                        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
+wire update_min_point = (total_cost < c_min) && systolic_valid_pair_q && detecting_new_point_q_collision_cycle_count > 0;
+//&& 
+//                        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 
 // Systolic array signals
 wire systolic_valid_out;
@@ -492,7 +497,7 @@ end
 // Steered point itself is pre-checked in CHECK_STEERED_POINT state for fast rejection
 
 reg [4:0] detecting_new_point_q_collision_cycle_count;  // 5 bits to hold up to 14 (10 neighbors + 5 PEs - 1)
-reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
+//reg detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle;
 reg found_valid_neighbor; // Track if at least one neighbor produced a valid (collision-free) connection
 
 // new_point_q_collided = 1 if ALL neighbors collided (no valid connections found)
@@ -504,25 +509,33 @@ assign done_detecting_new_point_q_collision = detecting_new_point_q_collision_cy
 always @( posedge clk ) begin
     if ( reset ) begin
         detecting_new_point_q_collision_cycle_count <= 0;
-        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
+//        detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
         found_valid_neighbor <= 1'b0;
     end else begin
         if (entering_check_new_point_q_collision == 1'b1) begin
             // Reset flag when starting collision check for new steered point
             found_valid_neighbor <= 1'b0;
-            detecting_new_point_q_collision_cycle_count <= 1'b1; // detecting_new_point_q_collision_cycle_count
-            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b1;
+            detecting_new_point_q_collision_cycle_count <= 1'b0; // detecting_new_point_q_collision_cycle_count
+//            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b1;
         end else if (done_detecting_new_point_q_collision == 1'b1) begin
             detecting_new_point_q_collision_cycle_count <= 0;
-            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
+//            detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle <= 1'b0;
         end else begin    
-            // Set flag if we find any valid collision-free connection
-            if (systolic_valid_pair == 1'b1) begin
-                found_valid_neighbor <= 1'b1;
-            end
-            if (detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle == 1'b1) begin
+            if (detecting_new_point_q_collision_cycle_count >= 0 && detecting_new_point_q_collision_cycle_count < total_drain_cycles) begin
                 detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
             end
+            
+//            if (detecting_new_point_q_collision_cycle_count_incremented_on_prev_cycle == 1'b1) begin
+//                detecting_new_point_q_collision_cycle_count <= detecting_new_point_q_collision_cycle_count + 1'b1;
+//            end
+            
+            // Set flag if we find any valid collision-free connection
+            if ( detecting_new_point_q_collision_cycle_count >= NUM_PE ) begin // if the first element has gotten through the pes
+                if (systolic_valid_pair == 1'b1) begin
+                    found_valid_neighbor <= 1'b1;
+                end
+            end
+
         end
     end
 end

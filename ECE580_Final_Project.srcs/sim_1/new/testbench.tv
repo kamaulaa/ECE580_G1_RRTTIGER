@@ -65,6 +65,8 @@ wire steered_point_in_obstacle;
 wire done_checking_steeredpoint;
 wire [NUM_PE_WIDTH:0] steered_point_check_cyclecount;
 
+wire [3:0] nearest_neighborcount;
+
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
     .NUM_PE(NUM_PE),
@@ -112,7 +114,9 @@ core #(
     .entering_check_steered_point(entering_check_steered_point),
     .steered_point_in_obstacle(steered_point_in_obstacle),    
     .done_checking_steeredpoint(done_checking_steeredpoint),
-    .steered_point_check_cyclecount(steered_point_check_cyclecount)
+    .steered_point_check_cyclecount(steered_point_check_cyclecount),
+    
+    .nearest_neighborcount(nearest_neighborcount)
 
 );
 
