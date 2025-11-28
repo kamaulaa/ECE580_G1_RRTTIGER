@@ -11,8 +11,8 @@ module core
     parameter N = 128,
     parameter N_SQUARED = N * N,
     parameter N_BITS = 7,
-    parameter OUTERMOST_ITER_MAX = 128,
-    parameter OUTERMOST_ITER_BITS = 7,
+    parameter OUTERMOST_ITER_MAX = 1023,
+    parameter OUTERMOST_ITER_BITS = 10,
     parameter COST_WIDTH = 16, // TODO: maybe change the cost width --> max it would take up 19 bits, so maybe we could truncate it more
     parameter ADDR_BITS = 14
 )
@@ -109,12 +109,21 @@ module core
     output entering_check_new_point_q_collision,
     output do_traceback,
     
-    output [COST_WIDTH-1:0] final_cost, // this stays the same during traceback, it's always the cost of the last element added
-    output [COORDINATE_WIDTH-1:0] final_x_coord, // this changes each cycle of traceback
-    output [COORDINATE_WIDTH-1:0] final_y_coord, // this changes each cycle of traceback
+    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr
+    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+    
+    output outermost_loopcheck,
+    output outermost_counter_less_than,
+    
+    output goalreached,
+    
+    output [COORDINATE_WIDTH-1:0] systolic_val_x1q,
+    output [COORDINATE_WIDTH-1:0] systolic_val_y1q
+    
 );
 
     // Control -> Datapath signals
@@ -134,7 +143,7 @@ module core
     // Datapath -> Control signals
     wire new_point_q_collided;
     wire done_draining;
-    wire done_traceback;
+//    wire done_traceback;
 //    wire random_point_already_exists;
 //    wire done_with_search_nearest_neighbor;
     wire done_evaluating_random_point;
@@ -253,12 +262,15 @@ module core
         .potential_new_pointy(potential_new_pointy),
         .occupied_arrayidx(occupied_arrayidx),
         
-        .final_cost(final_cost),
-        .final_x_coord(final_x_coord),
-        .final_y_coord(final_y_coord),
+        .finalcost(finalcost),
+        .final_xcoord(final_xcoord),
+        .final_ycoord(final_ycoord),
         .tracebackptr(tracebackptr),
-        .new_traceback_ptr(new_traceback_ptr)
-       
+        .new_tracebackptr(new_tracebackptr),
+        
+        .goalreached(goalreached),
+        .systolic_val_x1q(systolic_val_x1q),
+        .systolic_val_y1q(systolic_val_y1q)
     );
 
     // Control FSM instantiation
@@ -279,6 +291,8 @@ module core
         .traceback_state(traceback_state),
         .output_state(output_state),
         .outermost_loopcounter(outermost_loopcounter),
+        .outermost_loopcheck(outermost_loopcheck),    
+        .outermost_counter_less_than(outermost_counter_less_than),
         
         // Inputs from datapath
         .path_found(path_found),

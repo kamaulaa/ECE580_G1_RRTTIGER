@@ -16,8 +16,8 @@ module datapath #(
     parameter N = 128,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
     parameter N_BITS = 7, // log2(N)
-    parameter OUTERMOST_ITER_MAX = 128, // number of points that can be generated & stored until failure
-    parameter OUTERMOST_ITER_BITS = 7, // log2(OUTERMOST_ITER_MAX)
+    parameter OUTERMOST_ITER_MAX = 1023, // number of points that can be generated & stored until failure
+    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
     parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
     parameter ADDR_BITS = 14    // log2(N_SQUARED) = log2(1,048,576) = 20
 )(
@@ -120,16 +120,30 @@ module datapath #(
     
     output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
-    output [COST_WIDTH-1:0] final_cost, // this stays the same during traceback, it's always the cost of the last element added
-    output [COORDINATE_WIDTH-1:0] final_x_coord, // this changes each cycle of traceback
-    output [COORDINATE_WIDTH-1:0] final_y_coord, // this changes each cycle of traceback
+    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr
+    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+    
+    output goalreached,
+    
+    output [COORDINATE_WIDTH-1:0] systolic_val_x1q,
+    output [COORDINATE_WIDTH-1:0] systolic_val_y1q
 
 );
 
+assign systolic_val_x1q = systolic_val_x1_q;
+assign systolic_val_y1q = systolic_val_y1_q;
+
+assign goalreached = goal_reached;
+
+assign finalcost = final_cost;
+assign final_xcoord = final_x_coord;
+assign final_ycoord = final_y_coord;
 assign tracebackptr = traceback_ptr;
+assign new_tracebackptr = new_traceback_ptr;
 
 assign occupied_arrayidx = occupied_array_idx;
 
@@ -380,6 +394,8 @@ endfunction
         end
     end
 
+        // (31/32)*newpoint parent + (1/32)*xrand <== existing
+        // ((31)*newpoint parent + xrand) / 32 <== "OR SHOULD"
     wire [COORDINATE_WIDTH-1:0] potential_new_point_x = (3'b111*(new_point_parent_x >> tau_denom_bits)) + (x_rand >> tau_denom_bits);
     wire [COORDINATE_WIDTH-1:0] potential_new_point_y = (3'b111*(new_point_parent_y >> tau_denom_bits)) + (y_rand >> tau_denom_bits);
     // NOTE: OR SHOULD THIS BE THIS?
@@ -663,14 +679,15 @@ end
 
 reg [OUTERMOST_ITER_BITS-1:0] traceback_ptr;
 assign done_traceback = traceback_ptr == 0;
-assign [COST_WIDTH-1:0] final_cost = occupied_points_array[occupied_array_idx][COST_MSB:COST_LSB];
-assign [COORDINATE_WIDTH-1:0] final_x_coord = occupied_points_array[traceback_ptr][X_MSB:X_LSB];
-assign [COORDINATE_WIDTH-1:0] final_y_coord = occupied_points_array[traceback_ptr][Y_MSB:Y_LSB];
-assign [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr = occupied_points_array[traceback_ptr][PARENT_IDX_MSB:PARENT_IDX_LSB];
+
+wire [COST_WIDTH-1:0] final_cost = occupied_points_array[traceback_ptr][COST_MSB:COST_LSB];
+wire [COORDINATE_WIDTH-1:0] final_x_coord = occupied_points_array[traceback_ptr][X_MSB:X_LSB];
+wire [COORDINATE_WIDTH-1:0] final_y_coord = occupied_points_array[traceback_ptr][Y_MSB:Y_LSB];
+wire [OUTERMOST_ITER_BITS-1:0] new_traceback_ptr = occupied_points_array[traceback_ptr][PARENT_IDX_MSB:PARENT_IDX_LSB];
 
 always @( posedge clk ) begin
     if ( reset )  begin
-        traceback_ptr <= 0;
+        traceback_ptr <= {OUTERMOST_ITER_BITS{1'b0}};
     end else begin
         if ( !do_traceback ) begin
             traceback_ptr <= occupied_array_idx;

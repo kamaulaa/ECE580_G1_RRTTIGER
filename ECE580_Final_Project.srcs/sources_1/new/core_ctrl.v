@@ -13,8 +13,8 @@ module core_ctrl
     // ADJUSTABLE GRID PARAMETERS
     parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = 128, // NEED THIS?
-    parameter OUTERMOST_ITER_BITS = 7, // log2(OUTERMOST_ITER_MAX)
+    parameter OUTERMOST_ITER_MAX = 1023,
+    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
     parameter X_BITS = 7, // log2(GRID_WIDTH)
     parameter Y_BITS = 7, // log2(GRID_HEIGHT )
     parameter ADDR_BITS = 14 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
@@ -28,6 +28,8 @@ module core_ctrl
     output traceback_state,
     output [3:0] output_state,
     output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
+    output outermost_loopcheck,
+    output outermost_counter_less_than,
     
     // Inputs from the datapath
     input path_found,
@@ -79,9 +81,11 @@ module core_ctrl
     // 0 -> 1 -> 2 -> c -> 3 -> b -> d -> 4 -> 7
 
     assign outermost_loopcounter = outermost_loop_counter;
+    assign outermost_loopcheck = outermost_loop_check;
+    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
-    wire outermost_loop_check = !path_found && (outermost_loop_counter <= OUTERMOST_ITER_MAX);
+    wire outermost_loop_check = !path_found && (outermost_loop_counter < OUTERMOST_ITER_MAX);
 
     reg [3:0] state;
     reg [3:0] next_state;
@@ -206,14 +210,9 @@ module core_ctrl
             end
             
             else if ( state == FAILURE ) begin
-                if ( done_traceback == 1'b0) begin 
-                    do_traceback <= 1'b1;
-                end else begin
-                    do_traceback <= 1'b0;
-                end            
+                do_traceback <= 1'b1;          
             end
-
-            
+        
         end
     end
        

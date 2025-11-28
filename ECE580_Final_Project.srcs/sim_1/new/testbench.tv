@@ -16,8 +16,8 @@ parameter NUM_PE_WIDTH = 3;
 parameter N = 128;
 parameter N_SQUARED = N * N;
 parameter N_BITS = 7;
-parameter OUTERMOST_ITER_MAX = 128;
-parameter OUTERMOST_ITER_BITS = 7;
+parameter OUTERMOST_ITER_MAX = 1023;
+parameter OUTERMOST_ITER_BITS = 10;
 parameter COST_WIDTH = 16; // change the cost width
 parameter ADDR_BITS = 14;
 
@@ -108,6 +108,21 @@ wire [COORDINATE_WIDTH-1:0] potential_new_pointy;
 wire [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx;
 wire add_edge_state;
 wire entering_check_new_point_q_collision;
+
+wire outermost_loopcheck;
+wire outermost_counter_less_than;
+
+wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
+wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
+wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
+
+wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
+wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
+
+wire goalreached;
+
+wire [COORDINATE_WIDTH-1:0] systolic_val_x1q;
+wire [COORDINATE_WIDTH-1:0] systolic_val_y1q;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -202,11 +217,19 @@ core #(
     .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
     .do_traceback(do_traceback),
     
-    .final_cost(final_cost),
-    .final_x_coord(final_x_coord),
-    .final_y_coord(final_y_coord),
+    .finalcost(finalcost),
+    .final_xcoord(final_xcoord),
+    .final_ycoord(final_ycoord),
     .tracebackptr(tracebackptr),
-    .new_traceback_ptr(new_traceback_ptr)
+    .new_tracebackptr(new_tracebackptr),
+    
+    .outermost_loopcheck(outermost_loopcheck),    
+    .outermost_counter_less_than(outermost_counter_less_than),
+    
+    .goalreached(goalreached),
+    
+    .systolic_val_x1q(systolic_val_x1q),
+    .systolic_val_y1q(systolic_val_y1q)
 
 );
 
@@ -227,10 +250,10 @@ initial begin
     start_x = {COORDINATE_WIDTH{1'b0}}; // start at (0,0)
     start_y = {COORDINATE_WIDTH{1'b0}};
     
-    goal_top_bound = 127 - 10; // make the goal box 10x10 in the opposite corner
-    goal_bottom_bound = 127;
-    goal_left_bound = 127 - 10;
-    goal_right_bound = 127;
+    goal_top_bound = 95-5; // make the goal box 10x10 in the opposite corner
+    goal_bottom_bound = 95+5;
+    goal_left_bound = 95-5;
+    goal_right_bound = 95+5;
 
     obs_left = { 7'd126, 7'd126, 7'd126, 7'd126, 7'd126}; // start by making the obstacles all the same, putting them in the upper right corner and small
     obs_right = { 7'd127, 7'd127, 7'd127, 7'd127, 7'd127};
@@ -243,20 +266,16 @@ initial begin
         if (failure_state) begin
             $display("time: %0t", $time);
             $display("path not found"); // need to make sure the right stuff is printed in traceback and failure to see how far we got
-            $finish;
+            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord);  
+            $display("cost: %d", finalcost); 
         end else if (traceback_state) begin
             $display("path found");
-            $display("final cost: %d", final_cost);
-            $display("(x,y): (%d, %d)", final_x_coord, final_y_coord);
+            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord);
+            $display("cost: %d", finalcost);
         end else if (output_state == 4'b1010) begin
             $finish;
         end
     end
 end
-
-//always @(posedge clk) begin
-//    $display("t=%0t | failure=%b traceback=%b path_found=%b", $time, failure_state, traceback_state, path_found);
-//end
-
 
 endmodule
