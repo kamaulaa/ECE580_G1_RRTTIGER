@@ -10,7 +10,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module oc_pe #(
-    parameter COORDINATE_WIDTH = 10  // 10 bits per coordinate (x or y)
+    parameter COORDINATE_WIDTH = 10,  // 10 bits per coordinate (x or y)
+    parameter PARENT_BITS = 10
 )(
     input wire clk,
     input wire rst,
@@ -31,7 +32,7 @@ module oc_pe #(
     // endpoint 2 (x2, y2)
     input wire [COORDINATE_WIDTH-1:0] x2_in,
     input wire [COORDINATE_WIDTH-1:0] y2_in,
-    input wire [COORDINATE_WIDTH-1:0] parent_index_in,
+    input wire [PARENT_BITS-1:0] parent_index_in,
     
     // outputs to next PE
     output reg valid_out,          // valid is HIGH (1) if no collision was detected
@@ -41,7 +42,7 @@ module oc_pe #(
     output reg [COORDINATE_WIDTH-1:0] y1_out,
     output reg [COORDINATE_WIDTH-1:0] x2_out,
     output reg [COORDINATE_WIDTH-1:0] y2_out,
-    output reg [COORDINATE_WIDTH-1:0] parent_index_out
+    output reg [PARENT_BITS-1:0] parent_index_out
 );
     
     // (NO) COLLISION CHECK 1: both endpoints on the same side, outside of obstacle
