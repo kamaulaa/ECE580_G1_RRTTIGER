@@ -273,10 +273,11 @@ end
 
 // initialize all the inputs
 initial begin  
+<<<<<<< HEAD
 
     start_x = 10'd111;  // Inside the goal box
     start_y = 10'd15;
-    
+
     // Goal region: 10x10 box in upper-right corner
     goal_top_bound    = 10;
     goal_bottom_bound = 20;
