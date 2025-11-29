@@ -78,18 +78,18 @@ wire[3:0] output_state;
 wire check_steered_point;
 wire check_new_point_q_collision;
 
-//wire update_minpoint;
-//wire systolic_valid_pairq;
-//wire [COST_WIDTH-1:0] rdcost;
-//wire [COST_WIDTH-1:0] calculatedcost;
-//wire [COST_WIDTH-1:0] totalcost;
+wire update_minpoint;
+wire systolic_valid_pairq;
+wire [COST_WIDTH-1:0] rdcost;
+wire [COST_WIDTH-1:0] calculatedcost;
+wire [COST_WIDTH-1:0] totalcost;
 //wire validin;
 
-//wire [COORDINATE_WIDTH-1:0] systolic_valx1;
-//wire [COORDINATE_WIDTH-1:0] systolic_valy1;
-//wire [COORDINATE_WIDTH-1:0] systolic_valx2;
-//wire [COORDINATE_WIDTH-1:0] systolic_valy2;
-//wire [COORDINATE_WIDTH-1:0] systolic_val_parentindex;
+wire [COORDINATE_WIDTH-1:0] systolic_valx1;
+wire [COORDINATE_WIDTH-1:0] systolic_valy1;
+wire [COORDINATE_WIDTH-1:0] systolic_valx2;
+wire [COORDINATE_WIDTH-1:0] systolic_valy2;
+wire [COORDINATE_WIDTH-1:0] systolic_val_parentindex;
 
 //wire [COORDINATE_WIDTH-1:0] new_pointx;
 //wire [COORDINATE_WIDTH-1:0] new_pointy;    
@@ -106,24 +106,31 @@ wire check_new_point_q_collision;
 //wire [COORDINATE_WIDTH-1:0] potential_new_pointx;
 //wire [COORDINATE_WIDTH-1:0] potential_new_pointy;
 
-//wire [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx;
+wire [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx;
 //wire add_edge_state;
 //wire entering_check_new_point_q_collision;
 
 //wire outermost_loopcheck;
 //wire outermost_counter_less_than;
 
-//wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
-//wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
-//wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
+wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
+wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
+wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
 
-//wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
-//wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
+wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
+wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
 
 //wire goalreached;
 
 //wire [COORDINATE_WIDTH-1:0] systolic_val_x1q;
 //wire [COORDINATE_WIDTH-1:0] systolic_val_y1q;
+
+wire [COST_WIDTH-1:0] cmin;
+wire [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_indexq;
+
+wire [COORDINATE_WIDTH-1:0] nbx; // coords of that nearest neighbor
+wire [COORDINATE_WIDTH-1:0] nby;
+wire [OUTERMOST_ITER_BITS-1:0] nbindex;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -184,21 +191,21 @@ core #(
     
 //    .outermost_loopcounter(outermost_loopcounter),
     .check_steered_point(check_steered_point),
-    .check_new_point_q_collision(check_new_point_q_collision)
+    .check_new_point_q_collision(check_new_point_q_collision),
     
-//    .update_minpoint(update_minpoint),
-//    .systolic_valid_pairq(systolic_valid_pairq),
-//    .rdcost(rdcost),
-//    .calculatedcost(calculatedcost),
-//    .totalcost(totalcost),
+    .update_minpoint(update_minpoint),
+    .systolic_valid_pairq(systolic_valid_pairq),
+    .rdcost(rdcost),
+    .calculatedcost(calculatedcost),
+    .totalcost(totalcost),
     
 //    .validin(validin),
     
-//    .systolic_valx1(systolic_valx1),
-//    .systolic_valy1(systolic_valy1),
-//    .systolic_valx2(systolic_valx2),
-//    .systolic_valy2(systolic_valy2),
-//    .systolic_val_parentindex(systolic_val_parentindex),
+    .systolic_valx1(systolic_valx1),
+    .systolic_valy1(systolic_valy1),
+    .systolic_valx2(systolic_valx2),
+    .systolic_valy2(systolic_valy2),
+    .systolic_val_parentindex(systolic_val_parentindex),
     
 //    .new_pointx(new_pointx),
 //    .new_pointy(new_pointy),
@@ -214,16 +221,16 @@ core #(
 //    .potential_new_pointx(potential_new_pointx),
 //    .potential_new_pointy(potential_new_pointy),
     
-//    .occupied_arrayidx(occupied_arrayidx),
+    .occupied_arrayidx(occupied_arrayidx),
 //    .add_edge_state(add_edge_state),
 //    .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
 //    .do_traceback(do_traceback),
     
-//    .finalcost(finalcost),
-//    .final_xcoord(final_xcoord),
-//    .final_ycoord(final_ycoord),
-//    .tracebackptr(tracebackptr),
-//    .new_tracebackptr(new_tracebackptr),
+    .finalcost(finalcost),
+    .final_xcoord(final_xcoord),
+    .final_ycoord(final_ycoord),
+    .tracebackptr(tracebackptr),
+    .new_tracebackptr(new_tracebackptr),
     
 //    .outermost_loopcheck(outermost_loopcheck),    
 //    .outermost_counter_less_than(outermost_counter_less_than),
@@ -231,7 +238,13 @@ core #(
 //    .goalreached(goalreached),
     
 //    .systolic_val_x1q(systolic_val_x1q),
-//    .systolic_val_y1q(systolic_val_y1q)
+//    .systolic_val_y1q(systolic_val_y1q).
+    .cmin(cmin),
+    .systolic_val_parent_indexq(systolic_val_parent_indexq),
+    
+    .nbx(nbx),
+    .nby(nby),
+    .nbindex(nbindex)
 
 );
 
@@ -252,7 +265,59 @@ initial begin
 end
 
 // initialize all the inputs
-initial begin    
+initial begin  
+//    // Test 1 Working
+//    // Start point
+//    start_x = {COORDINATE_WIDTH{1'b0}};  // (0, 0)
+//    start_y = {COORDINATE_WIDTH{1'b0}};
+        
+//    // Goal region: 10x10 box in bottom-right corner
+//    goal_top_bound      = 95-5; 
+//    goal_bottom_bound   = 95+5;
+//    goal_left_bound     = 95-5;
+//    goal_right_bound    = 95+5;
+    
+//    // Place all obstacles in a tiny corner where they won't interfere - overlap in upper right corner
+//    obs_left    =   { 7'd126,   7'd126, 7'd126, 7'd126, 7'd126};
+//    obs_right   =   { 7'd127,   7'd127, 7'd127, 7'd127, 7'd127};
+//    obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
+//    obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
+
+//    // Test 2 Working
+//    // Start point
+//    start_x = 7'd24;  // Random point
+//    start_y = 7'd38;
+    
+//    // Goal region: 10x10 box in upper-right corner
+//    goal_top_bound    = 10;
+//    goal_bottom_bound = 20;
+//    goal_left_bound   = 116-10;
+//    goal_right_bound  = 116;
+    
+//    // Small obstacles - 1x1
+//    obs_left   = {7'd5, 7'd103, 7'd74, 7'd10, 7'd95};
+//    obs_right  = {7'd6, 7'd104, 7'd75, 7'd11, 7'd96};
+//    obs_top    = {7'd15, 7'd6,  7'd62, 7'd111, 7'd23};
+//    obs_bottom = {7'd16, 7'd7,  7'd63, 7'd112, 7'd24};
+
+//    // Test 3    
+//    // Start point
+//    start_x = 7'd24;  // Random point
+//    start_y = 7'd38;
+    
+//    // Goal region: 10x10 box in upper-right corner
+//    goal_top_bound    = 10;
+//    goal_bottom_bound = 20;
+//    goal_left_bound   = 116-10;
+//    goal_right_bound  = 116;
+    
+//    // Large obstacles - 5x5
+//    obs_left   = {7'd5, 7'd103, 7'd74, 7'd10, 7'd95};
+//    obs_right  = {7'd10, 7'd108, 7'd79, 7'd15, 7'd100};
+//    obs_top    = {7'd15, 7'd6,  7'd62, 7'd111, 7'd23};
+//    obs_bottom = {7'd20, 7'd11,  7'd67, 7'd116, 7'd28};  
+
+    // Test 4
     // Start point inside goal region
     start_x = 10'd111;  // Inside the goal box
     start_y = 10'd15;
