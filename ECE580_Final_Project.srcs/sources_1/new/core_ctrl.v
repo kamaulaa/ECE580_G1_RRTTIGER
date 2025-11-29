@@ -23,13 +23,13 @@ module core_ctrl
     input clk,
     input reset,
     
-    // debugging wires
-    output failure_state,
-    output traceback_state,
+//    // debugging wires
+//    output failure_state,
+//    output traceback_state,
     output [3:0] output_state,
-    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
-    output outermost_loopcheck,
-    output outermost_counter_less_than,
+//    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
+//    output outermost_loopcheck,
+//    output outermost_counter_less_than,
     
     // Inputs from the datapath
     input path_found,
@@ -80,11 +80,11 @@ module core_ctrl
     // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> add edge
     // 0 -> 1 -> 2 -> c -> 3 -> b -> d -> 4 -> 7
 
-    assign outermost_loopcounter = outermost_loop_counter;
-    assign outermost_loopcheck = outermost_loop_check;
-    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
+//    assign outermost_loopcounter = outermost_loop_counter;
+//    assign outermost_loopcheck = outermost_loop_check;
+//    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
 
-    reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter = {OUTERMOST_ITER_BITS{1'b0}}; 
+    reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter; // = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter < OUTERMOST_ITER_MAX);
 
     reg [3:0] state;
@@ -95,7 +95,7 @@ module core_ctrl
     always @ ( posedge clk ) begin
         if ( reset ) begin
             state <= INIT;
-            outermost_loop_counter <= 0;
+//            outermost_loop_counter <= 0;
         end
         else begin
             state <= next_state;
@@ -216,8 +216,8 @@ module core_ctrl
         end
     end
        
-    assign failure_state = state == FAILURE;
-    assign traceback_state = state == TRACEBACK;
+//    assign failure_state = state == FAILURE;
+//    assign traceback_state = state == TRACEBACK;
 
     always @ (*) begin
         // Default assignments to prevent latches
