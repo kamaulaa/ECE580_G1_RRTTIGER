@@ -11,7 +11,7 @@
 
 module oc_pe #(
     parameter COORDINATE_WIDTH = 10,  // 10 bits per coordinate (x or y)
-    parameter PARENT_BITS = 12 // this is the index into the overall data structure, Lauren: was 10
+    parameter PARENT_BITS = 9 // this is the index into the overall data structure, Lauren: was 10
 )(   
     input wire clk,
     input wire rst,
@@ -46,6 +46,7 @@ module oc_pe #(
     
     output x_span_out,
     output y_span_out
+
 );
 
     assign x_span_out = x_span;

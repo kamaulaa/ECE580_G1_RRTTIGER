@@ -92,11 +92,11 @@ module datapath #(
     input check_steered_point,
     input check_new_point_q_collision,
     
-//    output update_minpoint,
-//    output systolic_valid_pairq,
-//    output [COST_WIDTH-1:0] rdcost,
-//    output [COST_WIDTH-1:0] calculatedcost,
-//    output [COST_WIDTH-1:0] totalcost,
+    output update_minpoint,
+    output systolic_valid_pairq,
+    output [COST_WIDTH-1:0] rdcost,
+    output [COST_WIDTH-1:0] calculatedcost,
+    output [COST_WIDTH-1:0] totalcost,
 //    output validin,
     
 //    output [COORDINATE_WIDTH-1:0] systolic_valx1,
@@ -104,6 +104,7 @@ module datapath #(
 //    output [COORDINATE_WIDTH-1:0] systolic_valx2,
 //    output [COORDINATE_WIDTH-1:0] systolic_valy2,
 //    output [OUTERMOST_ITER_BITS-1:0] systolic_val_parentindex,
+
     
 //    output [COORDINATE_WIDTH-1:0] new_pointx,
 //    output [COORDINATE_WIDTH-1:0] new_pointy,
@@ -116,14 +117,15 @@ module datapath #(
 //    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
 //    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
     
-//    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
-//    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
-//    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
-//    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
+    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
     output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr
+
     
 //    output goalreached,
     
@@ -153,13 +155,13 @@ module datapath #(
 
 //assign goalreached = goal_reached;
 
-//assign finalcost = final_cost;
-//assign final_xcoord = final_x_coord;
-//assign final_ycoord = final_y_coord;
-//assign tracebackptr = traceback_ptr;
-//assign new_tracebackptr = new_traceback_ptr;
+assign finalcost = final_cost;
+assign final_xcoord = final_x_coord;
+assign final_ycoord = final_y_coord;
+assign tracebackptr = traceback_ptr;
+assign new_tracebackptr = new_traceback_ptr;
 
-//assign occupied_arrayidx = occupied_array_idx;
+assign occupied_arrayidx = occupied_array_idx;
 
 //assign potential_new_pointx = potential_new_point_x;
 //assign potential_new_pointy = potential_new_point_y;
@@ -173,18 +175,18 @@ module datapath #(
 //assign new_pointx = new_point_x;
 //assign new_pointy = new_point_y;
 
-//assign systolic_valx1 = systolic_val_x1;
-//assign systolic_valy1 = systolic_val_y1;
-//assign systolic_valx2 = systolic_val_x2;
-//assign systolic_valy2 = systolic_val_y2;
-//assign systolic_val_parentindex = systolic_val_parent_index;
+assign systolic_valx1 = systolic_val_x1;
+assign systolic_valy1 = systolic_val_y1;
+assign systolic_valx2 = systolic_val_x2;
+assign systolic_valy2 = systolic_val_y2;
+assign systolic_val_parentindex = systolic_val_parent_index;
 
 //assign validin = valid_in;
-//assign update_minpoint = update_min_point;
-//assign systolic_valid_pairq = systolic_valid_pair_q;
-//assign rdcost = rd_cost;
-//assign calculatedcost = calculated_cost;
-//assign totalcost = total_cost;
+assign update_minpoint = update_min_point;
+assign systolic_valid_pairq = systolic_valid_pair_q;
+assign rdcost = rd_cost;
+assign calculatedcost = calculated_cost;
+assign totalcost = total_cost;
 
 //assign done_checking_steeredpoint = done_checking_steered_point;
 

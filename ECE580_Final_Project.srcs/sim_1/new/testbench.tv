@@ -77,18 +77,18 @@ wire steered_point_in_obstacle;
 wire check_steered_point;
 wire check_new_point_q_collision;
 
-//wire update_minpoint;
-//wire systolic_valid_pairq;
-//wire [COST_WIDTH-1:0] rdcost;
-//wire [COST_WIDTH-1:0] calculatedcost;
-//wire [COST_WIDTH-1:0] totalcost;
+wire update_minpoint;
+wire systolic_valid_pairq;
+wire [COST_WIDTH-1:0] rdcost;
+wire [COST_WIDTH-1:0] calculatedcost;
+wire [COST_WIDTH-1:0] totalcost;
 //wire validin;
 
-//wire [COORDINATE_WIDTH-1:0] systolic_valx1;
-//wire [COORDINATE_WIDTH-1:0] systolic_valy1;
-//wire [COORDINATE_WIDTH-1:0] systolic_valx2;
-//wire [COORDINATE_WIDTH-1:0] systolic_valy2;
-//wire [COORDINATE_WIDTH-1:0] systolic_val_parentindex;
+wire [COORDINATE_WIDTH-1:0] systolic_valx1;
+wire [COORDINATE_WIDTH-1:0] systolic_valy1;
+wire [COORDINATE_WIDTH-1:0] systolic_valx2;
+wire [COORDINATE_WIDTH-1:0] systolic_valy2;
+wire [COORDINATE_WIDTH-1:0] systolic_val_parentindex;
 
 //wire [COORDINATE_WIDTH-1:0] new_pointx;
 //wire [COORDINATE_WIDTH-1:0] new_pointy;    
@@ -109,15 +109,16 @@ wire done_with_search_nearest_neighbor;
 wire add_edge_state;
 wire entering_check_new_point_q_collision;
 
+
 //wire outermost_loopcheck;
 //wire outermost_counter_less_than;
 
-//wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
-//wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
-//wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
+wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
+wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
+wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
 
-//wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
-//wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
+wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
+wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
 
 //wire goalreached;
 
@@ -133,6 +134,7 @@ wire entering_check_new_point_q_collision;
 
 wire generate_req;
 wire do_traceback;
+
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -193,21 +195,21 @@ core #(
     
 //    .outermost_loopcounter(outermost_loopcounter),
     .check_steered_point(check_steered_point),
-    .check_new_point_q_collision(check_new_point_q_collision)
+    .check_new_point_q_collision(check_new_point_q_collision),
     
-//    .update_minpoint(update_minpoint),
-//    .systolic_valid_pairq(systolic_valid_pairq),
-//    .rdcost(rdcost),
-//    .calculatedcost(calculatedcost),
-//    .totalcost(totalcost),
+    .update_minpoint(update_minpoint),
+    .systolic_valid_pairq(systolic_valid_pairq),
+    .rdcost(rdcost),
+    .calculatedcost(calculatedcost),
+    .totalcost(totalcost),
     
 //    .validin(validin),
     
-//    .systolic_valx1(systolic_valx1),
-//    .systolic_valy1(systolic_valy1),
-//    .systolic_valx2(systolic_valx2),
-//    .systolic_valy2(systolic_valy2),
-//    .systolic_val_parentindex(systolic_val_parentindex),
+    .systolic_valx1(systolic_valx1),
+    .systolic_valy1(systolic_valy1),
+    .systolic_valx2(systolic_valx2),
+    .systolic_valy2(systolic_valy2),
+    .systolic_val_parentindex(systolic_val_parentindex),
     
 //    .new_pointx(new_pointx),
 //    .new_pointy(new_pointy),
@@ -227,12 +229,14 @@ core #(
     .add_edge_state(add_edge_state),
     .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
     .do_traceback(do_traceback),
+
     
     .finalcost(finalcost),
     .final_xcoord(final_xcoord),
     .final_ycoord(final_ycoord),
     .tracebackptr(tracebackptr),
     .new_tracebackptr(new_tracebackptr)
+
     
 //    .outermost_loopcheck(outermost_loopcheck),    
 //    .outermost_counter_less_than(outermost_counter_less_than),
@@ -247,6 +251,7 @@ core #(
 //    .nbx(nbx),
 //    .nby(nby),
 //    .nbindex(nbindex)
+
 
 );
 
@@ -264,7 +269,6 @@ initial begin
     @(posedge clk); 
     reset = 1'b0;
     cycles = 0;
-<<<<<<< HEAD
 end
 
 // initialize all the inputs

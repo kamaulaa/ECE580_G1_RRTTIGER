@@ -72,21 +72,21 @@ module core
     
 //    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
     output check_steered_point,
-    output check_new_point_q_collision
+    output check_new_point_q_collision,
     
-//    output update_minpoint,
-//    output systolic_valid_pairq,
-//    output [COST_WIDTH-1:0] rdcost,
-//    output [COST_WIDTH-1:0] calculatedcost,
-//    output [COST_WIDTH-1:0] totalcost,
+    output update_minpoint,
+    output systolic_valid_pairq,
+    output [COST_WIDTH-1:0] rdcost,
+    output [COST_WIDTH-1:0] calculatedcost,
+    output [COST_WIDTH-1:0] totalcost,
     
 //    output validin,
     
-//    output [COORDINATE_WIDTH-1:0] systolic_valx1,
-//    output [COORDINATE_WIDTH-1:0] systolic_valy1,
-//    output [COORDINATE_WIDTH-1:0] systolic_valx2,
-//    output [COORDINATE_WIDTH-1:0] systolic_valy2,
-//    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
+    output [COORDINATE_WIDTH-1:0] systolic_valx1,
+    output [COORDINATE_WIDTH-1:0] systolic_valy1,
+    output [COORDINATE_WIDTH-1:0] systolic_valx2,
+    output [COORDINATE_WIDTH-1:0] systolic_valy2,
+    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
     
 //    output [COORDINATE_WIDTH-1:0] new_pointx,
 //    output [COORDINATE_WIDTH-1:0] new_pointy,
@@ -103,19 +103,19 @@ module core
 //    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
 //    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
     
-//    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
 //    output add_edge_state,
 //    output entering_search_nearest_neighbor,
-//    output entering_check_new_point_q_collision
+    output entering_check_new_point_q_collision,
 //    output do_traceback,
     
-//    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
-//    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
-//    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
+    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
-//    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-//    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
+    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
     
 //    output outermost_loopcheck,
 //    output outermost_counter_less_than,
@@ -130,6 +130,7 @@ module core
 //    output [COORDINATE_WIDTH-1:0] nbx, // coords of that nearest neighbor
 //    output [COORDINATE_WIDTH-1:0] nby,
 //    output [OUTERMOST_ITER_BITS-1:0] nbindex
+
 );
 
     // Control -> Datapath signals
@@ -241,21 +242,21 @@ module core
 //        .systolic_validpair(systolic_validpair),
         
         .check_steered_point(check_steered_point),
-        .check_new_point_q_collision(check_new_point_q_collision)
+        .check_new_point_q_collision(check_new_point_q_collision),
         
-//        .update_minpoint(update_minpoint),
-//        .systolic_valid_pairq(systolic_valid_pairq),
-//        .rdcost(rdcost),
-//        .calculatedcost(calculatedcost),
-//        .totalcost(totalcost),
+        .update_minpoint(update_minpoint),
+        .systolic_valid_pairq(systolic_valid_pairq),
+        .rdcost(rdcost),
+        .calculatedcost(calculatedcost),
+        .totalcost(totalcost),
         
 //        .validin(validin),
         
-//        .systolic_valx1(systolic_valx1),
-//        .systolic_valy1(systolic_valy1),
-//        .systolic_valx2(systolic_valx2),
-//        .systolic_valy2(systolic_valy2),
-//        .systolic_val_parentindex(systolic_val_parentindex),
+        .systolic_valx1(systolic_valx1),
+        .systolic_valy1(systolic_valy1),
+        .systolic_valx2(systolic_valx2),
+        .systolic_valy2(systolic_valy2),
+        .systolic_val_parentindex(systolic_val_parentindex),
         
 //        .new_pointx(new_pointx),
 //        .new_pointy(new_pointy),
@@ -266,13 +267,13 @@ module core
         
 //        .potential_new_pointx(potential_new_pointx),
 //        .potential_new_pointy(potential_new_pointy),
-//        .occupied_arrayidx(occupied_arrayidx),
+        .occupied_arrayidx(occupied_arrayidx),
         
-//        .finalcost(finalcost),
-//        .final_xcoord(final_xcoord),
-//        .final_ycoord(final_ycoord),
-//        .tracebackptr(tracebackptr),
-//        .new_tracebackptr(new_tracebackptr),
+        .finalcost(finalcost),
+        .final_xcoord(final_xcoord),
+        .final_ycoord(final_ycoord),
+        .tracebackptr(tracebackptr),
+        .new_tracebackptr(new_tracebackptr),
         
 //        .goalreached(goalreached),
 //        .systolic_val_x1q(systolic_val_x1q),
@@ -283,7 +284,7 @@ module core
 //        .nbx(nbx),
 //        .nby(nby),
 //        .nbindex(nbindex)
-        
+
     );
 
     // Control FSM instantiation
