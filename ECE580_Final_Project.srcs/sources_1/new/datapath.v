@@ -8,7 +8,6 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 
-
 module datapath #(
     parameter COORDINATE_WIDTH = 7,
     parameter NUM_PE = 5,
@@ -41,7 +40,6 @@ module datapath #(
     // Dpath -> control
     output path_found,
     output new_point_q_collided,
-    output done_draining,
     output done_traceback,
     output random_point_already_exists, // valid random point
     output done_with_search_nearest_neighbor,
@@ -67,136 +65,136 @@ module datapath #(
     input do_traceback,
     
     // lots of debugging wires
-    output [COORDINATE_WIDTH-1:0] xrand_wire,
-    output [COORDINATE_WIDTH-1:0] yrand_wire,
-    output [COORDINATE_WIDTH-1:0] occupied_array_currentidx,
-    output current_array_entry_same_asrandom,
-    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
-    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
-    output x_equal,
-    output y_equal,
+//    output [COORDINATE_WIDTH-1:0] xrand_wire,
+//    output [COORDINATE_WIDTH-1:0] yrand_wire,
+//    output [COORDINATE_WIDTH-1:0] occupied_array_currentidx,
+//    output current_array_entry_same_asrandom,
+//    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB,
+//    output [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB,
+//    output x_equal,
+//    output y_equal,
     
-//    output done_detecting_new_point_qcollision,
-    output new_point_qcollided,
-    output [4:0] total_draincycles,
-    output [4:0] detecting_new_point_q_collision_cyclecount,
+////    output done_detecting_new_point_qcollision,
+//    output new_point_qcollided,
+//    output [4:0] total_draincycles,
+//    output [4:0] detecting_new_point_q_collision_cyclecount,
     
-    output done_checking_steeredpoint,
-    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
+//    output done_checking_steeredpoint,
+//    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
     
-    output [3:0] nearest_neighborcount,
-    output searchneighbor,
-    output entering_search_nearestneighbor,
+//    output [3:0] nearest_neighborcount,
+//    output searchneighbor,
+//    output entering_search_nearestneighbor,
     
-    output systolic_validout,
-    output systolic_validpair,
+//    output systolic_validout,
+//    output systolic_validpair,
     
     input check_steered_point,
-    input check_new_point_q_collision,
+    input check_new_point_q_collision
     
-    output update_minpoint,
-    output systolic_valid_pairq,
-    output [COST_WIDTH-1:0] rdcost,
-    output [COST_WIDTH-1:0] calculatedcost,
-    output [COST_WIDTH-1:0] totalcost,
-    output validin,
+//    output update_minpoint,
+//    output systolic_valid_pairq,
+//    output [COST_WIDTH-1:0] rdcost,
+//    output [COST_WIDTH-1:0] calculatedcost,
+//    output [COST_WIDTH-1:0] totalcost,
+//    output validin,
     
-    output [COORDINATE_WIDTH-1:0] systolic_valx1,
-    output [COORDINATE_WIDTH-1:0] systolic_valy1,
-    output [COORDINATE_WIDTH-1:0] systolic_valx2,
-    output [COORDINATE_WIDTH-1:0] systolic_valy2,
-    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
+//    output [COORDINATE_WIDTH-1:0] systolic_valx1,
+//    output [COORDINATE_WIDTH-1:0] systolic_valy1,
+//    output [COORDINATE_WIDTH-1:0] systolic_valx2,
+//    output [COORDINATE_WIDTH-1:0] systolic_valy2,
+//    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
     
-    output [COORDINATE_WIDTH-1:0] new_pointx,
-    output [COORDINATE_WIDTH-1:0] new_pointy,
+//    output [COORDINATE_WIDTH-1:0] new_pointx,
+//    output [COORDINATE_WIDTH-1:0] new_pointy,
     
-    output [COORDINATE_WIDTH-1:0] new_point_parentx,
-    output [COORDINATE_WIDTH-1:0] new_point_parenty,
+//    output [COORDINATE_WIDTH-1:0] new_point_parentx,
+//    output [COORDINATE_WIDTH-1:0] new_point_parenty,
     
-    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
+//    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
     
-    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
-    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
+//    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
+//    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
     
-    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+//    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
-    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
-    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
-    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
+//    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+//    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+//    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
-    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+//    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
+//    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
     
-    output goalreached,
+//    output goalreached,
     
-    output [COORDINATE_WIDTH-1:0] systolic_val_x1q,
-    output [COORDINATE_WIDTH-1:0] systolic_val_y1q
+//    output [COORDINATE_WIDTH-1:0] systolic_val_x1q,
+//    output [COORDINATE_WIDTH-1:0] systolic_val_y1q
 
 );
 
-assign systolic_val_x1q = systolic_val_x1_q;
-assign systolic_val_y1q = systolic_val_y1_q;
+//assign systolic_val_x1q = systolic_val_x1_q;
+//assign systolic_val_y1q = systolic_val_y1_q;
 
-assign goalreached = goal_reached;
+//assign goalreached = goal_reached;
 
-assign finalcost = final_cost;
-assign final_xcoord = final_x_coord;
-assign final_ycoord = final_y_coord;
-assign tracebackptr = traceback_ptr;
-assign new_tracebackptr = new_traceback_ptr;
+//assign finalcost = final_cost;
+//assign final_xcoord = final_x_coord;
+//assign final_ycoord = final_y_coord;
+//assign tracebackptr = traceback_ptr;
+//assign new_tracebackptr = new_traceback_ptr;
 
-assign occupied_arrayidx = occupied_array_idx;
+//assign occupied_arrayidx = occupied_array_idx;
 
-assign potential_new_pointx = potential_new_point_x;
-assign potential_new_pointy = potential_new_point_y;
+//assign potential_new_pointx = potential_new_point_x;
+//assign potential_new_pointy = potential_new_point_y;
 
-assign best_neighboridx = best_neighbor_idx;
+//assign best_neighboridx = best_neighbor_idx;
 
-assign new_point_parentx = new_point_parent_x;
-assign new_point_parenty = new_point_parent_y;
+//assign new_point_parentx = new_point_parent_x;
+//assign new_point_parenty = new_point_parent_y;
 
 
-assign new_pointx = new_point_x;
-assign new_pointy = new_point_y;
+//assign new_pointx = new_point_x;
+//assign new_pointy = new_point_y;
 
-assign systolic_valx1 = systolic_val_x1;
-assign systolic_valy1 = systolic_val_y1;
-assign systolic_valx2 = systolic_val_x2;
-assign systolic_valy2 = systolic_val_y2;
-assign systolic_val_parentindex = systolic_val_parent_index;
+//assign systolic_valx1 = systolic_val_x1;
+//assign systolic_valy1 = systolic_val_y1;
+//assign systolic_valx2 = systolic_val_x2;
+//assign systolic_valy2 = systolic_val_y2;
+//assign systolic_val_parentindex = systolic_val_parent_index;
 
-assign validin = valid_in;
-assign update_minpoint = update_min_point;
-assign systolic_valid_pairq = systolic_valid_pair_q;
-assign rdcost = rd_cost;
-assign calculatedcost = calculated_cost;
-assign totalcost = total_cost;
+//assign validin = valid_in;
+//assign update_minpoint = update_min_point;
+//assign systolic_valid_pairq = systolic_valid_pair_q;
+//assign rdcost = rd_cost;
+//assign calculatedcost = calculated_cost;
+//assign totalcost = total_cost;
 
-assign done_checking_steeredpoint = done_checking_steered_point;
+//assign done_checking_steeredpoint = done_checking_steered_point;
 
-assign systolic_validout = systolic_valid_out;
-assign systolic_validpair = systolic_valid_pair;
+//assign systolic_validout = systolic_valid_out;
+//assign systolic_validpair = systolic_valid_pair;
 
-assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
-assign searchneighbor = search_neighbor;
+//assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
+//assign searchneighbor = search_neighbor;
 
-assign nearest_neighborcount = nearest_neighbor_count;
+//assign nearest_neighborcount = nearest_neighbor_count;
 
-assign steered_point_check_cyclecount = steered_point_check_cycle_count;
+//assign steered_point_check_cyclecount = steered_point_check_cycle_count;
 
-//assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
-assign new_point_qcollided = new_point_q_collided;
-assign total_draincycles = total_drain_cycles;
-assign detecting_new_point_q_collision_cyclecount = detecting_new_point_q_collision_cycle_count;
+////assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
+//assign new_point_qcollided = new_point_q_collided;
+//assign total_draincycles = total_drain_cycles;
+//assign detecting_new_point_q_collision_cyclecount = detecting_new_point_q_collision_cycle_count;
 
-assign occupied_array_currentidx = occupied_array_current_idx;
-assign current_array_entry_same_asrandom = current_array_entry_same_as_random;
-assign xrand_wire = x_rand_wire;
-assign yrand_wire = y_rand_wire;
-assign x_equal = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire;
-assign y_equal = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire;
-assign occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-assign occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
+//assign occupied_array_currentidx = occupied_array_current_idx;
+//assign current_array_entry_same_asrandom = current_array_entry_same_as_random;
+//assign xrand_wire = x_rand_wire;
+//assign yrand_wire = y_rand_wire;
+//assign x_equal = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire;
+//assign y_equal = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire;
+//assign occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+//assign occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
 
 ////////////////////////////////////////////////////////////////////////
 // SIGNAL DECLARATIONS
@@ -259,11 +257,6 @@ end
 assign path_found = path_found_q;
 
 ////////////////////////////////////////////////////////////////////////
-// CONTROL SIGNALS
-
-assign done_draining = ~(systolic_valid_out ||  systolic_valid_pair_q); // not used anymore
-
-////////////////////////////////////////////////////////////////////////
 // POINT ARRAY & GRID 
 
 // array to store points in grid and parent index
@@ -318,13 +311,7 @@ endfunction
         if ( reset == 1'b1) begin
             x_rand <= {COORDINATE_WIDTH{1'b0}};
             y_rand <= {COORDINATE_WIDTH{1'b0}};
-        end else begin
-            if ( generate_req == 1'b1 ) begin
-                occupied_array_current_idx <= 0;
-            end
-            if ( eval_random_point == 1'b1 ) begin
-                occupied_array_current_idx <= (done_evaluating_random_point == 1'b1) ? 1'b0 : occupied_array_current_idx + 1;
-            end
+        end else begin           
             if ( done_evaluating_random_point == 1'b1 && current_array_entry_same_as_random == 1'b0) begin
                 x_rand <= x_rand_wire;
                 y_rand <= y_rand_wire;
@@ -355,21 +342,25 @@ endfunction
 
     // array to store indices of 10 nearest neigbors
     // nearest neighbor with shortest distance will be used to generate new point 
-    localparam NEIGHBOR_ARRAY_WIDTH = OUTERMOST_ITER_BITS + DIST_WIDTH; // neighbor index + distance to random 
-    localparam IDX_MSB = NEIGHBOR_ARRAY_WIDTH - 1;
-    localparam IDX_LSB = DIST_WIDTH;
-    localparam DIST_MSB = IDX_LSB - 1;
-    localparam DIST_LSB = 0;
+//    localparam NEIGHBOR_ARRAY_WIDTH = OUTERMOST_ITER_BITS + DIST_WIDTH; // neighbor index + distance to random 
+//    localparam IDX_MSB = NEIGHBOR_ARRAY_WIDTH - 1;
+//    localparam IDX_LSB = DIST_WIDTH;
+//    localparam DIST_MSB = IDX_LSB - 1;
+//    localparam DIST_LSB = 0;
 
-    reg [NEIGHBOR_ARRAY_WIDTH-1:0] ten_nearest_neighbors [0:9]; // stores index (occupied_array_current_idx)
+//    reg [25:0] ten_nearest_neighbors [0:9]; // stores index (occupied_array_current_idx)
+    reg [OUTERMOST_ITER_BITS-1:0] ten_nearest_neighbors_index [0:9]; // index
+    reg [DIST_WIDTH-1:0] ten_nearest_neighbors_dist [0:9]; // distance
     reg [3:0] nearest_neighbor_count; 
 
     reg [3:0] best_neighbor_ten_idx; // index of top ten array 
-    reg [OUTERMOST_ITER_BITS-1:0] best_neighbor_idx; // index of full 1024 entries array
-    reg [DIST_WIDTH-1:0] best_neighbor_dist;
+    reg [9:0] best_neighbor_idx; // index of full 1024 entries array
+    reg [15:0] best_neighbor_dist; //     reg [DIST_WIDTH-1:0] best_neighbor_dist;
     reg [3:0] worst_neighbor_ten_idx;
-    reg [DIST_WIDTH-1:0] worst_neighbor_dist;
+    reg [15:0] worst_neighbor_dist; //     reg [DIST_WIDTH-1:0] worst_neighbor_dist;
         
+    integer i;
+
     // find best and worst neighbors among top ten neighbors 
     always @(*) begin
         best_neighbor_ten_idx  = 0;
@@ -378,16 +369,16 @@ endfunction
         worst_neighbor_dist= {DIST_WIDTH{1'b0}}; // min
 
         if (nearest_neighbor_count != 0) begin // it's a problem because nearest_neighbor_count == 0 at that point
-            for (integer i = 0; i < nearest_neighbor_count; i = i + 1) begin
+            for (i = 0; i < nearest_neighbor_count; i = i + 1) begin
                 // find best neighbor among neighbors in ten_nearest_neighbors
-                if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] < best_neighbor_dist) begin
-                    best_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
+                if (ten_nearest_neighbors_dist[i] < best_neighbor_dist) begin // ten_nearest_neighbors[i][15:0]
+                    best_neighbor_dist = ten_nearest_neighbors_dist[i];
                     best_neighbor_ten_idx  = i;
-                    best_neighbor_idx = ten_nearest_neighbors[i][IDX_MSB:IDX_LSB]; // Han: this is the problem
+                    best_neighbor_idx = ten_nearest_neighbors_index[i]; // IDX_MSB:IDX_LSB // Han: this is the problem
                 end
                 // find worst neighbor among neighbors in ten_nearest_neighbors
-                if (ten_nearest_neighbors[i][DIST_MSB:DIST_LSB] > worst_neighbor_dist) begin
-                    worst_neighbor_dist = ten_nearest_neighbors[i][DIST_MSB:DIST_LSB];
+                if (ten_nearest_neighbors_dist[i] > worst_neighbor_dist) begin
+                    worst_neighbor_dist = ten_nearest_neighbors_dist[i];
                     worst_neighbor_ten_idx  = i;
                 end
             end
@@ -420,6 +411,14 @@ endfunction
             best_neighbor_idx <= {OUTERMOST_ITER_BITS{1'b0}};
 
         end else begin
+            if ( generate_req == 1'b1 ) begin
+                occupied_array_current_idx <= 0;
+            end
+            
+            if ( eval_random_point == 1'b1 ) begin
+                occupied_array_current_idx <= (done_evaluating_random_point == 1'b1) ? 1'b0 : occupied_array_current_idx + 1;
+            end
+        
             // Reset nearest_neighbor_count at the start of each neighbor search
             if (entering_search_nearest_neighbor == 1'b1) begin // if there's only 1 element in the occupied array don't do this
                 nearest_neighbor_count <= 4'b0;
@@ -427,13 +426,15 @@ endfunction
             end
             // add first ten points into top 10 nearest neighbor array
             else if (nearest_neighbor_count < 4'd10 && search_neighbor == 1'b1) begin
-                ten_nearest_neighbors[nearest_neighbor_count] <= {occupied_array_current_idx, distance};
+                ten_nearest_neighbors_dist[nearest_neighbor_count] <= distance;
+                ten_nearest_neighbors_index[nearest_neighbor_count] <= occupied_array_current_idx;
                 nearest_neighbor_count <= nearest_neighbor_count + 1'b1; // max at 10
             end
             else if (search_neighbor == 1'b1) begin
                 // replace current worst if new distance is smaller
-                if (distance < ten_nearest_neighbors[worst_neighbor_ten_idx][DIST_MSB:DIST_LSB]) begin
-                    ten_nearest_neighbors[worst_neighbor_ten_idx] <= {occupied_array_current_idx, distance};
+                if (distance < ten_nearest_neighbors_dist[worst_neighbor_ten_idx]) begin
+                    ten_nearest_neighbors_dist[worst_neighbor_ten_idx] <= distance;
+                    ten_nearest_neighbors_index[worst_neighbor_ten_idx] <= occupied_array_current_idx;
                 end
             end
             
@@ -569,16 +570,16 @@ always @(posedge clk) begin
         else if (entering_check_new_point_q_collision) begin // entering_
             // Load first neighbor (index 0) to be fed into systolic array on next clock edge
             nearest_neighbors_checked <= 4'b1;  // Counter = 1 means we've queued neighbor 0
-            nb_index <= ten_nearest_neighbors[0][IDX_MSB:IDX_LSB];
-            nb_x <= occupied_points_array[ten_nearest_neighbors[0][IDX_MSB:IDX_LSB]][X_MSB:X_LSB];
-            nb_y <= occupied_points_array[ten_nearest_neighbors[0][IDX_MSB:IDX_LSB]][Y_MSB:Y_LSB];
+            nb_index <= ten_nearest_neighbors_index[0];
+            nb_x <= occupied_points_array[ten_nearest_neighbors_index[0]][X_MSB:X_LSB];
+            nb_y <= occupied_points_array[ten_nearest_neighbors_index[0]][Y_MSB:Y_LSB];
             valid_in <= (nearest_neighbor_count > 0) ? 1'b1 : 1'b0;
         end
         else if (check_new_point_q_collision && (nearest_neighbors_checked < nearest_neighbor_count)) begin
             // Feed one neighbor per cycle into the systolic array
-            nb_index <= ten_nearest_neighbors[nearest_neighbors_checked][IDX_MSB:IDX_LSB];
-            nb_x <= occupied_points_array[ten_nearest_neighbors[nearest_neighbors_checked][IDX_MSB:IDX_LSB]][X_MSB:X_LSB];
-            nb_y <= occupied_points_array[ten_nearest_neighbors[nearest_neighbors_checked][IDX_MSB:IDX_LSB]][Y_MSB:Y_LSB];
+            nb_index <= ten_nearest_neighbors_index[nearest_neighbors_checked];
+            nb_x <= occupied_points_array[ten_nearest_neighbors_index[nearest_neighbors_checked]][X_MSB:X_LSB];
+            nb_y <= occupied_points_array[ten_nearest_neighbors_index[nearest_neighbors_checked]][Y_MSB:Y_LSB];
             nearest_neighbors_checked <= nearest_neighbors_checked + 1;
             valid_in <= 1'b1;
         end
