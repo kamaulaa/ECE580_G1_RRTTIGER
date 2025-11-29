@@ -266,7 +266,7 @@ end
 
 // initialize all the inputs
 initial begin  
-//    // Test 1 Working
+//    // Test 1
 //    // Start point
 //    start_x = {COORDINATE_WIDTH{1'b0}};  // (0, 0)
 //    start_y = {COORDINATE_WIDTH{1'b0}};
@@ -283,7 +283,7 @@ initial begin
 //    obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
 //    obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
 
-//    // Test 2 Working
+//    // Test 2
 //    // Start point
 //    start_x = 7'd24;  // Random point
 //    start_y = 7'd38;
@@ -315,24 +315,24 @@ initial begin
 //    obs_left   = {7'd5, 7'd103, 7'd74, 7'd10, 7'd95};
 //    obs_right  = {7'd10, 7'd108, 7'd79, 7'd15, 7'd100};
 //    obs_top    = {7'd15, 7'd6,  7'd62, 7'd111, 7'd23};
-//    obs_bottom = {7'd20, 7'd11,  7'd67, 7'd116, 7'd28};  
+//    obs_bottom = {7'd20, 7'd11,  7'd67, 7'd116, 7'd28};   
 
-    // Test 4
-    // Start point inside goal region
-    start_x = 10'd111;  // Inside the goal box
-    start_y = 10'd15;
+//    // Test 4
+//    // Start point inside goal region
+//    start_x = 10'd111;  // Inside the goal box
+//    start_y = 10'd15;
     
-    // Goal region: 10x10 box in upper-right corner
-    goal_top_bound    = 10;
-    goal_bottom_bound = 20;
-    goal_left_bound   = 116-10;
-    goal_right_bound  = 116;
+//    // Goal region: 10x10 box in upper-right corner
+//    goal_top_bound    = 10;
+//    goal_bottom_bound = 20;
+//    goal_left_bound   = 116-10;
+//    goal_right_bound  = 116;
     
-    // No obstacles needed - overlapped in top right corner
-    obs_left    =   { 7'd126,   7'd126, 7'd126, 7'd126, 7'd126};
-    obs_right   =   { 7'd127,   7'd127, 7'd127, 7'd127, 7'd127};
-    obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
-    obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
+//    // No obstacles needed - overlapped in top right corner
+//    obs_left    =   { 7'd126,   7'd126, 7'd126, 7'd126, 7'd126};
+//    obs_right   =   { 7'd127,   7'd127, 7'd127, 7'd127, 7'd127};
+//    obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
+//    obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
     
 end
 
