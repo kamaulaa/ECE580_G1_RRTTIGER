@@ -72,7 +72,7 @@ module core
     
 //    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
     output check_steered_point,
-    output check_new_point_q_collision,
+    output check_new_point_q_collision
     
 //    output update_minpoint,
 //    output systolic_valid_pairq,
@@ -91,7 +91,7 @@ module core
 //    output [COORDINATE_WIDTH-1:0] new_pointx,
 //    output [COORDINATE_WIDTH-1:0] new_pointy,
     
-    output add_new_point_q,
+//    output add_new_point_q,
     
 //    output [COORDINATE_WIDTH-1:0] new_point_parentx,
 //    output [COORDINATE_WIDTH-1:0] new_point_parenty,
@@ -105,17 +105,17 @@ module core
     
 //    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
-    output add_edge_state,
-    output entering_search_nearest_neighbor,
-    output entering_check_new_point_q_collision,
-    output do_traceback,
+//    output add_edge_state,
+//    output entering_search_nearest_neighbor,
+//    output entering_check_new_point_q_collision
+//    output do_traceback,
     
-    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
-    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
-    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
+//    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+//    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+//    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
-    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+//    output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
+//    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
     
 //    output outermost_loopcheck,
 //    output outermost_counter_less_than,
@@ -225,6 +225,7 @@ module core
 //        .y_equal(y_equal),
         
 //        .done_detecting_new_point_qcollision(done_detecting_new_point_q_collision),
+
 //        .new_point_qcollided(new_point_qcollided),
 //        .total_draincycles(total_draincycles),
 //        .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount),
@@ -240,7 +241,7 @@ module core
 //        .systolic_validpair(systolic_validpair),
         
         .check_steered_point(check_steered_point),
-        .check_new_point_q_collision(check_new_point_q_collision),
+        .check_new_point_q_collision(check_new_point_q_collision)
         
 //        .update_minpoint(update_minpoint),
 //        .systolic_valid_pairq(systolic_valid_pairq),
@@ -267,11 +268,11 @@ module core
 //        .potential_new_pointy(potential_new_pointy),
 //        .occupied_arrayidx(occupied_arrayidx),
         
-        .finalcost(finalcost),
-        .final_xcoord(final_xcoord),
-        .final_ycoord(final_ycoord),
-        .tracebackptr(tracebackptr),
-        .new_tracebackptr(new_tracebackptr),
+//        .finalcost(finalcost),
+//        .final_xcoord(final_xcoord),
+//        .final_ycoord(final_ycoord),
+//        .tracebackptr(tracebackptr),
+//        .new_tracebackptr(new_tracebackptr),
         
 //        .goalreached(goalreached),
 //        .systolic_val_x1q(systolic_val_x1q),

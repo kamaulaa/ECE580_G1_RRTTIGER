@@ -93,7 +93,7 @@ wire check_new_point_q_collision;
 //wire [COORDINATE_WIDTH-1:0] new_pointx;
 //wire [COORDINATE_WIDTH-1:0] new_pointy;    
        
-wire add_new_point_q;
+//wire add_new_point_q;
 
 //wire [COORDINATE_WIDTH-1:0] new_point_parentx;
 //wire [COORDINATE_WIDTH-1:0] new_point_parenty;  
@@ -112,12 +112,12 @@ wire entering_check_new_point_q_collision;
 //wire outermost_loopcheck;
 //wire outermost_counter_less_than;
 
-wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
-wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
-wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
+//wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
+//wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
+//wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of traceback
 
-wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
-wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
+//wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
+//wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
 
 //wire goalreached;
 
@@ -193,7 +193,7 @@ core #(
     
 //    .outermost_loopcounter(outermost_loopcounter),
     .check_steered_point(check_steered_point),
-    .check_new_point_q_collision(check_new_point_q_collision),
+    .check_new_point_q_collision(check_new_point_q_collision)
     
 //    .update_minpoint(update_minpoint),
 //    .systolic_valid_pairq(systolic_valid_pairq),
@@ -212,7 +212,7 @@ core #(
 //    .new_pointx(new_pointx),
 //    .new_pointy(new_pointy),
     
-    .add_new_point_q(add_new_point_q),
+//    .add_new_point_q(add_new_point_q),
     
 //    .new_point_parentx(new_point_parentx),
 //    .new_point_parenty(new_point_parenty),
@@ -252,7 +252,6 @@ core #(
 
 integer cycles;
 
-
 initial clk = 1'b0;
 always
 #7.5 clk = ~clk;
@@ -265,19 +264,7 @@ initial begin
     @(posedge clk); 
     reset = 1'b0;
     cycles = 0;
-end
-
-// lauren - added this - make sure to remove
-integer occ_file;
-integer i;
-reg printed_once;
-initial begin
-    printed_once = 0;
-    occ_file = $fopen("occupied_points_dump_test_4.txt", "w");
-    if (occ_file == 0) begin
-        $display("ERROR: could not open occupied_points_dump.txt");
-        $finish;
-    end
+<<<<<<< HEAD
 end
 
 // initialize all the inputs
@@ -304,40 +291,17 @@ end
 initial begin
     forever begin @(posedge clk);
         cycles = cycles + 1;
-
-        // Dump array if path found, path failed, or timeout
-        if (!printed_once && 
-            (output_state == 4'b1000 || output_state == 4'b1001 || cycles >= 100000)) begin
-            printed_once = 1;
-
-            $fdisplay(occ_file, "Occupied points array dump at time %0t", $time);
-            for (i = 0; i < 4096; i = i + 1) begin
-                $fdisplay(occ_file,
-                    "[%0d] = %h",
-                    i,
-                    dut.datapath_inst.occupied_points_array[i]  // adjust hierarchy if needed
-                );
-            end
-            $fdisplay(occ_file, "---- end dump ----\n");
-            $fflush(occ_file);
-            $display("Occupied points array written to file.");
-        end
-
-        // Debug messages
         if (output_state == 4'b1000) begin
             $display("time: %0t", $time);
-            $display("path not found");
+            $display("path not found"); // need to make sure the right stuff is printed in traceback and failure to see how far we got
+//            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord);  
+//            $display("cost: %d", finalcost); 
         end else if (output_state == 4'b1001) begin
-            $display("time: %0t", $time);
             $display("path found");
-        end
-
-        // Finish simulation if either path finished or timeout
-        if (output_state == 4'b1010 || cycles >= 3860000) begin
-            $display("cycles: %0d", cycles);
-            $fflush(occ_file);
-            $fclose(occ_file);
-            $display("File closed. Simulation finished.");
+//            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord); // Lauren - uncomment these to get x,y and also add a signal to print out the occupied array index pointer
+//            $display("cost: %d", finalcost); // Lauren - find the cost per hour to run on an FPGA, have Han find the cost per hour to run on the Google Cloud CPU
+        end else if (output_state == 4'b1010) begin
+            $display("cycles: %0d", cycles);        
             $finish;
         end
     end

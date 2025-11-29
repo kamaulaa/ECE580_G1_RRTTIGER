@@ -118,9 +118,9 @@ module datapath #(
     
 //    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
-    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
-    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
-    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
+//    output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
+//    output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
+//    output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
     output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr
@@ -153,11 +153,11 @@ module datapath #(
 
 //assign goalreached = goal_reached;
 
-assign finalcost = final_cost;
-assign final_xcoord = final_x_coord;
-assign final_ycoord = final_y_coord;
-assign tracebackptr = traceback_ptr;
-assign new_tracebackptr = new_traceback_ptr;
+//assign finalcost = final_cost;
+//assign final_xcoord = final_x_coord;
+//assign final_ycoord = final_y_coord;
+//assign tracebackptr = traceback_ptr;
+//assign new_tracebackptr = new_traceback_ptr;
 
 //assign occupied_arrayidx = occupied_array_idx;
 
