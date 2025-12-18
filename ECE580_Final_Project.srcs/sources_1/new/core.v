@@ -39,8 +39,8 @@ module core
     output path_found,
     
 //    // Expose states so that testbench knows when to end
-    output failure_state,
-    output traceback_state,
+//    output failure_state,
+//    output traceback_state,
     output [3:0] output_state,
     output generate_req,
     output random_point_already_exists,
@@ -62,42 +62,41 @@ module core
     output steered_point_in_obstacle,    
 //    output done_checking_steeredpoint,
 //    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
-
     
-    output [3:0] nearest_neighborcount,
-    output searchneighbor,
-    output entering_search_nearestneighbor,
+//    output [3:0] nearest_neighborcount,
+//    output searchneighbor,
+//    output entering_search_nearestneighbor,
     
-    output systolic_validout,
-    output systolic_validpair,
+//    output systolic_validout,
+//    output systolic_validpair,
     
-    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
+//    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
     output check_steered_point,
     output check_new_point_q_collision,
     
-    output update_minpoint,
-    output systolic_valid_pairq,
-    output [COST_WIDTH-1:0] rdcost,
-    output [COST_WIDTH-1:0] calculatedcost,
-    output [COST_WIDTH-1:0] totalcost,
+//    output update_minpoint,
+//    output systolic_valid_pairq,
+//    output [COST_WIDTH-1:0] rdcost,
+//    output [COST_WIDTH-1:0] calculatedcost,
+//    output [COST_WIDTH-1:0] totalcost,
     
-    output validin,
+//    output validin,
     
-    output [COORDINATE_WIDTH-1:0] systolic_valx1,
-    output [COORDINATE_WIDTH-1:0] systolic_valy1,
-    output [COORDINATE_WIDTH-1:0] systolic_valx2,
-    output [COORDINATE_WIDTH-1:0] systolic_valy2,
-    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
+//    output [COORDINATE_WIDTH-1:0] systolic_valx1,
+//    output [COORDINATE_WIDTH-1:0] systolic_valy1,
+//    output [COORDINATE_WIDTH-1:0] systolic_valx2,
+//    output [COORDINATE_WIDTH-1:0] systolic_valy2,
+//    output [COORDINATE_WIDTH-1:0] systolic_val_parentindex,
     
-    output [COORDINATE_WIDTH-1:0] new_pointx,
-    output [COORDINATE_WIDTH-1:0] new_pointy,
+//    output [COORDINATE_WIDTH-1:0] new_pointx,
+//    output [COORDINATE_WIDTH-1:0] new_pointy,
     
     output add_new_point_q,
     
-    output [COORDINATE_WIDTH-1:0] new_point_parentx,
-    output [COORDINATE_WIDTH-1:0] new_point_parenty,
+//    output [COORDINATE_WIDTH-1:0] new_point_parentx,
+//    output [COORDINATE_WIDTH-1:0] new_point_parenty,
     
-    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
+//    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
     
     output search_neighbor,
     output done_with_search_nearest_neighbor,
@@ -105,7 +104,7 @@ module core
 //    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
 
     
-    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+//    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
     output add_edge_state,
     output entering_search_nearest_neighbor,
@@ -119,8 +118,8 @@ module core
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
     output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
     
-    output outermost_loopcheck,
-    output outermost_counter_less_than,
+//    output outermost_loopcheck,
+//    output outermost_counter_less_than,
     
     output goalreached
     
@@ -218,14 +217,14 @@ module core
         .drain_arr(drain_arr),
         .do_traceback(do_traceback),
         
-        .xrand_wire(xrand_wire),
-        .yrand_wire(yrand_wire),
-        .occupied_array_currentidx(occupied_array_currentidx),
-        .current_array_entry_same_asrandom(current_array_entry_same_asrandom),
-        .occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB(occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB),
-        .occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB(occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB),
-        .x_equal(x_equal),
-        .y_equal(y_equal),
+//        .xrand_wire(xrand_wire),
+//        .yrand_wire(yrand_wire),
+//        .occupied_array_currentidx(occupied_array_currentidx),
+//        .current_array_entry_same_asrandom(current_array_entry_same_asrandom),
+//        .occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB(occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB),
+//        .occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB(occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB),
+//        .x_equal(x_equal),
+//        .y_equal(y_equal),
         
 //        .done_detecting_new_point_qcollision(done_detecting_new_point_q_collision),
 
@@ -233,55 +232,56 @@ module core
 //        .total_draincycles(total_draincycles),
 //        .detecting_new_point_q_collision_cyclecount(detecting_new_point_q_collision_cyclecount),
         
-        .done_checking_steeredpoint(done_checking_steeredpoint),
-        .steered_point_check_cyclecount(steered_point_check_cyclecount),
+//        .done_checking_steeredpoint(done_checking_steeredpoint),
+//        .steered_point_check_cyclecount(steered_point_check_cyclecount),
         
-        .nearest_neighborcount(nearest_neighborcount),
-        .searchneighbor(searchneighbor),
-        .entering_search_nearestneighbor(entering_search_nearestneighbor),
+//        .nearest_neighborcount(nearest_neighborcount),
+//        .searchneighbor(searchneighbor),
+//        .entering_search_nearestneighbor(entering_search_nearestneighbor),
         
-        .systolic_validout(systolic_validout),
-        .systolic_validpair(systolic_validpair),
+//        .systolic_validout(systolic_validout),
+//        .systolic_validpair(systolic_validpair),
         
         .check_steered_point(check_steered_point),
         .check_new_point_q_collision(check_new_point_q_collision),
         
-        .update_minpoint(update_minpoint),
-        .systolic_valid_pairq(systolic_valid_pairq),
-        .rdcost(rdcost),
-        .calculatedcost(calculatedcost),
-        .totalcost(totalcost),
+//        .update_minpoint(update_minpoint),
+//        .systolic_valid_pairq(systolic_valid_pairq),
+//        .rdcost(rdcost),
+//        .calculatedcost(calculatedcost),
+//        .totalcost(totalcost),
         
-        .validin(validin),
+//        .validin(validin),
         
-        .systolic_valx1(systolic_valx1),
-        .systolic_valy1(systolic_valy1),
-        .systolic_valx2(systolic_valx2),
-        .systolic_valy2(systolic_valy2),
-        .systolic_val_parentindex(systolic_val_parentindex),
+//        .systolic_valx1(systolic_valx1),
+//        .systolic_valy1(systolic_valy1),
+//        .systolic_valx2(systolic_valx2),
+//        .systolic_valy2(systolic_valy2),
+//        .systolic_val_parentindex(systolic_val_parentindex),
         
-        .new_pointx(new_pointx),
-        .new_pointy(new_pointy),
+//        .new_pointx(new_pointx),
+//        .new_pointy(new_pointy),
         
-        .new_point_parentx(new_point_parentx),
-        .new_point_parenty(new_point_parenty),
-        .best_neighboridx(best_neighboridx),
+//        .new_point_parentx(new_point_parentx),
+//        .new_point_parenty(new_point_parenty),
+//        .best_neighboridx(best_neighboridx),
         
-        .potential_new_pointx(potential_new_pointx),
-        .potential_new_pointy(potential_new_pointy),
-        .occupied_arrayidx(occupied_arrayidx),
+//        .potential_new_pointx(potential_new_pointx),
+//        .potential_new_pointy(potential_new_pointy),
+//        .occupied_arrayidx(occupied_arrayidx),
         
         .finalcost(finalcost),
         .final_xcoord(final_xcoord),
         .final_ycoord(final_ycoord),
         .tracebackptr(tracebackptr),
         .new_tracebackptr(new_tracebackptr)
-       
+
 //        .goalreached(goalreached),
 //        .systolic_val_x1q(systolic_val_x1q),
 //        .systolic_val_y1q(systolic_val_y1q),
 //        .cmin(cmin),
 //        .systolic_val_parent_indexq(systolic_val_parent_indexq),
+
         
 //        .nbx(nbx),
 //        .nby(nby),
@@ -307,9 +307,9 @@ module core
 //        .traceback_state(traceback_state),
 
         .output_state(output_state),
-        .outermost_loopcounter(outermost_loopcounter),
-        .outermost_loopcheck(outermost_loopcheck),    
-        .outermost_counter_less_than(outermost_counter_less_than),
+//        .outermost_loopcounter(outermost_loopcounter),
+//        .outermost_loopcheck(outermost_loopcheck),    
+//        .outermost_counter_less_than(outermost_counter_less_than),
         
         // Inputs from datapath
         .path_found(path_found),

@@ -79,26 +79,25 @@ module datapath #(
 //    output [4:0] total_draincycles,
 //    output [4:0] detecting_new_point_q_collision_cyclecount,
 
+//    output done_checking_steeredpoint,
+//    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
     
-    output done_checking_steeredpoint,
-    output [NUM_PE_WIDTH:0] steered_point_check_cyclecount,
+//    output [3:0] nearest_neighborcount,
+//    output searchneighbor,
+//    output entering_search_nearestneighbor,
     
-    output [3:0] nearest_neighborcount,
-    output searchneighbor,
-    output entering_search_nearestneighbor,
-    
-    output systolic_validout,
-    output systolic_validpair,
+//    output systolic_validout,
+//    output systolic_validpair,
     
     input check_steered_point,
     input check_new_point_q_collision,
     
-    output update_minpoint,
-    output systolic_valid_pairq,
-    output [COST_WIDTH-1:0] rdcost,
-    output [COST_WIDTH-1:0] calculatedcost,
-    output [COST_WIDTH-1:0] totalcost,
-    output validin,
+//    output update_minpoint,
+//    output systolic_valid_pairq,
+//    output [COST_WIDTH-1:0] rdcost,
+//    output [COST_WIDTH-1:0] calculatedcost,
+//    output [COST_WIDTH-1:0] totalcost,
+//    output validin,
     
 //    output [COORDINATE_WIDTH-1:0] systolic_valx1,
 //    output [COORDINATE_WIDTH-1:0] systolic_valy1,
@@ -107,28 +106,27 @@ module datapath #(
 //    output [OUTERMOST_ITER_BITS-1:0] systolic_val_parentindex,
 
     
-    output [COORDINATE_WIDTH-1:0] new_pointx,
-    output [COORDINATE_WIDTH-1:0] new_pointy,
+//    output [COORDINATE_WIDTH-1:0] new_pointx,
+//    output [COORDINATE_WIDTH-1:0] new_pointy,
     
-    output [COORDINATE_WIDTH-1:0] new_point_parentx,
-    output [COORDINATE_WIDTH-1:0] new_point_parenty,
+//    output [COORDINATE_WIDTH-1:0] new_point_parentx,
+//    output [COORDINATE_WIDTH-1:0] new_point_parenty,
     
-    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
+//    output [OUTERMOST_ITER_BITS-1:0] best_neighboridx,
     
-    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
-    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
+//    output [COORDINATE_WIDTH-1:0] potential_new_pointx,
+//    output [COORDINATE_WIDTH-1:0] potential_new_pointy,
     
-    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
+//    output [OUTERMOST_ITER_BITS-1:0] occupied_arrayidx,
     
     output [COST_WIDTH-1:0] finalcost, // this stays the same during traceback, it's always the cost of the last element added
     output [COORDINATE_WIDTH-1:0] final_xcoord, // this changes each cycle of traceback
     output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr
-
-    
+    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,   
     output goalreached
+
     
 //    output [COORDINATE_WIDTH-1:0] systolic_val_x1q,
 //    output [COORDINATE_WIDTH-1:0] systolic_val_y1q,
@@ -151,10 +149,10 @@ module datapath #(
 
 //assign systolic_val_parent_indexq = systolic_val_parent_index_q;
 
-assign systolic_val_x1q = systolic_val_x1_q;
-assign systolic_val_y1q = systolic_val_y1_q;
+//assign systolic_val_x1q = systolic_val_x1_q;
+//assign systolic_val_y1q = systolic_val_y1_q;
 
-assign goalreached = goal_reached;
+//assign goalreached = goal_reached;
 
 assign finalcost = final_cost;
 assign final_xcoord = final_x_coord;
@@ -162,44 +160,44 @@ assign final_ycoord = final_y_coord;
 assign tracebackptr = traceback_ptr;
 assign new_tracebackptr = new_traceback_ptr;
 
-assign occupied_arrayidx = occupied_array_idx;
+//assign occupied_arrayidx = occupied_array_idx;
 
-assign potential_new_pointx = potential_new_point_x;
-assign potential_new_pointy = potential_new_point_y;
+//assign potential_new_pointx = potential_new_point_x;
+//assign potential_new_pointy = potential_new_point_y;
 
-assign best_neighboridx = best_neighbor_idx;
+//assign best_neighboridx = best_neighbor_idx;
 
-assign new_point_parentx = new_point_parent_x;
-assign new_point_parenty = new_point_parent_y;
+//assign new_point_parentx = new_point_parent_x;
+//assign new_point_parenty = new_point_parent_y;
 
 
-assign new_pointx = new_point_x;
-assign new_pointy = new_point_y;
+//assign new_pointx = new_point_x;
+//assign new_pointy = new_point_y;
 
-assign systolic_valx1 = systolic_val_x1;
-assign systolic_valy1 = systolic_val_y1;
-assign systolic_valx2 = systolic_val_x2;
-assign systolic_valy2 = systolic_val_y2;
-assign systolic_val_parentindex = systolic_val_parent_index;
+//assign systolic_valx1 = systolic_val_x1;
+//assign systolic_valy1 = systolic_val_y1;
+//assign systolic_valx2 = systolic_val_x2;
+//assign systolic_valy2 = systolic_val_y2;
+//assign systolic_val_parentindex = systolic_val_parent_index;
 
-assign validin = valid_in;
-assign update_minpoint = update_min_point;
-assign systolic_valid_pairq = systolic_valid_pair_q;
-assign rdcost = rd_cost;
-assign calculatedcost = calculated_cost;
-assign totalcost = total_cost;
+//assign validin = valid_in;
+//assign update_minpoint = update_min_point;
+//assign systolic_valid_pairq = systolic_valid_pair_q;
+//assign rdcost = rd_cost;
+//assign calculatedcost = calculated_cost;
+//assign totalcost = total_cost;
 
-assign done_checking_steeredpoint = done_checking_steered_point;
+//assign done_checking_steeredpoint = done_checking_steered_point;
 
-assign systolic_validout = systolic_valid_out;
-assign systolic_validpair = systolic_valid_pair;
+//assign systolic_validout = systolic_valid_out;
+//assign systolic_validpair = systolic_valid_pair;
 
-assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
-assign searchneighbor = search_neighbor;
+//assign entering_search_nearestneighbor = entering_search_nearest_neighbor;
+//assign searchneighbor = search_neighbor;
 
-assign nearest_neighborcount = nearest_neighbor_count;
+//assign nearest_neighborcount = nearest_neighbor_count;
 
-assign steered_point_check_cyclecount = steered_point_check_cycle_count;
+//assign steered_point_check_cyclecount = steered_point_check_cycle_count;
 
 //assign done_detecting_new_point_qcollision = done_detecting_new_point_q_collision;
 //assign new_point_qcollided = new_point_q_collided;
@@ -207,14 +205,14 @@ assign steered_point_check_cyclecount = steered_point_check_cycle_count;
 //assign detecting_new_point_q_collision_cyclecount = detecting_new_point_q_collision_cycle_count;
 
 
-assign occupied_array_currentidx = occupied_array_current_idx;
-assign current_array_entry_same_asrandom = current_array_entry_same_as_random;
-assign xrand_wire = x_rand_wire;
-assign yrand_wire = y_rand_wire;
-assign x_equal = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire;
-assign y_equal = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire;
-assign occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
-assign occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
+//assign occupied_array_currentidx = occupied_array_current_idx;
+//assign current_array_entry_same_asrandom = current_array_entry_same_as_random;
+//assign xrand_wire = x_rand_wire;
+//assign yrand_wire = y_rand_wire;
+//assign x_equal = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB] == x_rand_wire;
+//assign y_equal = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB] == y_rand_wire;
+//assign occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB = occupied_points_array[occupied_array_current_idx][X_MSB:X_LSB];
+//assign occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB = occupied_points_array[occupied_array_current_idx][Y_MSB:Y_LSB];
 
 ////////////////////////////////////////////////////////////////////////
 // SIGNAL DECLARATIONS

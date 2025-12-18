@@ -142,7 +142,6 @@ module oc_pe #(
     assign check3_top_edge = (valid_in) ? ((dy != 0) && p1_y_inside && !p2_y_inside && (y2_in > obs_top_in) &&
                              (x_at_top_edge >= obs_left_in) && (x_at_top_edge <= obs_right_in)) : 1;
 
-
     // Calculate x-coordinate where line crosses bottom boundary
     assign x_at_bottom_edge = (valid_in) ? ((dy == 0) ? $signed(x1_in) : 
                               $signed(x1_in) + (dx * ($signed(obs_bottom_in) - $signed(y1_in))) / dy) : {2*COORDINATE_WIDTH{1'b0}} ;
