@@ -140,20 +140,7 @@ module oc_pe #(
     // Collision if: p1's y inside, p2's y above, AND crossing point's x is within obstacle bounds
     assign check3_top_edge = (dy != 0) && p1_y_inside && !p2_y_inside && (y2_in > obs_top_in) &&
                              (x_at_top_edge >= obs_left_in) && (x_at_top_edge <= obs_right_in);
-   
-    // HERE -- not fully updated here yet
-    assign x_at_top_edge = (p1_y_inside) ? ((dy == 0) ? $signed(x1_in) : 
-                            $signed(x1_in) + (dx * ($signed(obs_top_in) - $signed(y1_in))) / dy) :
-                            (p2_y_inside) ? ((dy == 0) ? $signed(x2_in) : 
-                            $signed(y2_in) + (dx * ($signed(obs_top_in) - $signed(y2_in))) / -dy) : 0;                          
-               
-    // Collision if: p1's x inside, p2's x to the right, AND crossing point's y is within obstacle bounds
-    assign check3_right_edge = (dx != 0) &&
-                              ((p1_x_inside && !p2_x_inside && (x2_in > obs_right_in)) || (p2_x_inside && !p1_x_inside && (x1_in > obs_right_in))) && 
-                              (y_at_right_edge <= obs_bottom_in) && (y_at_right_edge >= obs_top_in);
-    
-    
-    
+
     // Calculate x-coordinate where line crosses bottom boundary
     assign x_at_bottom_edge = (dy == 0) ? $signed(x1_in) : 
                               $signed(x1_in) + (dx * ($signed(obs_bottom_in) - $signed(y1_in))) / dy;
