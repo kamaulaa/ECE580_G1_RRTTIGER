@@ -41,20 +41,20 @@ reg [NUM_PE*COORDINATE_WIDTH-1:0] obs_bottom;
 // Status outputs
 wire path_found;
 
-//// Exposed states
-//wire failure_state;
-//wire traceback_state;
+// Exposed states
+wire failure_state;
+wire traceback_state;
 
 wire[3:0] output_state;
-//wire random_point_already_exists;
-//wire [COORDINATE_WIDTH-1:0] xrand_wire;
-//wire [COORDINATE_WIDTH-1:0] yrand_wire;
-//wire [COORDINATE_WIDTH-1:0] occupied_array_currentidx;
-//wire current_array_entry_same_asrandom;
-//wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB;
-//wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
-//wire x_equal;
-//wire y_equal;  
+wire random_point_already_exists;
+wire [COORDINATE_WIDTH-1:0] xrand_wire;
+wire [COORDINATE_WIDTH-1:0] yrand_wire;
+wire [COORDINATE_WIDTH-1:0] occupied_array_currentidx;
+wire current_array_entry_same_asrandom;
+wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_X_MSB_X_LSB;
+wire [COORDINATE_WIDTH-1:0] occupied_points_array_occupied_array_current_idx_Y_MSB_Y_LSB;
+wire x_equal;
+wire y_equal;  
 
 wire done_detecting_new_point_q_collision;
 //wire new_point_qcollided;
@@ -66,14 +66,14 @@ wire steered_point_in_obstacle;
 //wire done_checking_steeredpoint;
 //wire [NUM_PE_WIDTH:0] steered_point_check_cyclecount;
 
-//wire [3:0] nearest_neighborcount;
-//wire entering_search_nearestneighbor;
-//wire searchneighbor;
+wire [3:0] nearest_neighborcount;
+wire entering_search_nearestneighbor;
+wire searchneighbor;
 
-//wire systolic_validout;
-//wire systolic_validpair;
+wire systolic_validout;
+wire systolic_validpair;
 
-//wire [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter;
+wire [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter;
 wire check_steered_point;
 wire check_new_point_q_collision;
 
@@ -82,7 +82,7 @@ wire systolic_valid_pairq;
 wire [COST_WIDTH-1:0] rdcost;
 wire [COST_WIDTH-1:0] calculatedcost;
 wire [COST_WIDTH-1:0] totalcost;
-//wire validin;
+wire validin;
 
 wire [COORDINATE_WIDTH-1:0] systolic_valx1;
 wire [COORDINATE_WIDTH-1:0] systolic_valy1;
@@ -90,15 +90,15 @@ wire [COORDINATE_WIDTH-1:0] systolic_valx2;
 wire [COORDINATE_WIDTH-1:0] systolic_valy2;
 wire [COORDINATE_WIDTH-1:0] systolic_val_parentindex;
 
-//wire [COORDINATE_WIDTH-1:0] new_pointx;
-//wire [COORDINATE_WIDTH-1:0] new_pointy;    
+wire [COORDINATE_WIDTH-1:0] new_pointx;
+wire [COORDINATE_WIDTH-1:0] new_pointy;    
        
-//wire add_new_point_q;
+wire add_new_point_q;
 
-//wire [COORDINATE_WIDTH-1:0] new_point_parentx;
-//wire [COORDINATE_WIDTH-1:0] new_point_parenty;  
+wire [COORDINATE_WIDTH-1:0] new_point_parentx;
+wire [COORDINATE_WIDTH-1:0] new_point_parenty;  
 
-//wire [OUTERMOST_ITER_BITS-1:0] best_neighboridx;
+wire [OUTERMOST_ITER_BITS-1:0] best_neighboridx;
 
 wire search_neighbor;
 wire done_with_search_nearest_neighbor;
@@ -110,8 +110,8 @@ wire add_edge_state;
 wire entering_check_new_point_q_collision;
 
 
-//wire outermost_loopcheck;
-//wire outermost_counter_less_than;
+wire outermost_loopcheck;
+wire outermost_counter_less_than;
 
 wire [COST_WIDTH-1:0] finalcost; // this stays the same during traceback, it's always the cost of the last element added
 wire [COORDINATE_WIDTH-1:0] final_xcoord; // this changes each cycle of traceback
@@ -120,10 +120,10 @@ wire [COORDINATE_WIDTH-1:0] final_ycoord; // this changes each cycle of tracebac
 wire [OUTERMOST_ITER_BITS-1:0] tracebackptr;
 wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
 
-//wire goalreached;
+wire goalreached;
 
-//wire [COORDINATE_WIDTH-1:0] systolic_val_x1q;
-//wire [COORDINATE_WIDTH-1:0] systolic_val_y1q;
+wire [COORDINATE_WIDTH-1:0] systolic_val_x1q;
+wire [COORDINATE_WIDTH-1:0] systolic_val_y1q;
 
 //wire [COST_WIDTH-1:0] cmin;
 //wire [OUTERMOST_ITER_BITS-1:0] systolic_val_parent_indexq;
@@ -135,6 +135,9 @@ wire [OUTERMOST_ITER_BITS-1:0] new_tracebackptr;
 wire generate_req;
 wire do_traceback;
 
+
+wire generate_req;
+wire do_traceback;
 
 core #(
     .COORDINATE_WIDTH(COORDINATE_WIDTH),
@@ -162,8 +165,8 @@ core #(
     .obs_bottom(obs_bottom),
     .path_found(path_found),
     
-//    .failure_state(failure_state),
-//    .traceback_state(traceback_state),
+    .failure_state(failure_state),
+    .traceback_state(traceback_state),
     .output_state(output_state),
     .generate_req(generate_req),
     .random_point_already_exists(random_point_already_exists),
@@ -189,11 +192,12 @@ core #(
     .nearest_neighborcount(nearest_neighborcount),
 //    .searchneighbor(searchneighbor),
 //    .entering_search_nearestneighbor(entering_search_nearestneighbor),
+
     
-//    .systolic_validout(systolic_validout),
-//    .systolic_validpair(systolic_validpair),
+    .systolic_validout(systolic_validout),
+    .systolic_validpair(systolic_validpair),
     
-//    .outermost_loopcounter(outermost_loopcounter),
+    .outermost_loopcounter(outermost_loopcounter),
     .check_steered_point(check_steered_point),
     .check_new_point_q_collision(check_new_point_q_collision),
     
@@ -203,7 +207,7 @@ core #(
     .calculatedcost(calculatedcost),
     .totalcost(totalcost),
     
-//    .validin(validin),
+    .validin(validin),
     
     .systolic_valx1(systolic_valx1),
     .systolic_valy1(systolic_valy1),
@@ -211,14 +215,14 @@ core #(
     .systolic_valy2(systolic_valy2),
     .systolic_val_parentindex(systolic_val_parentindex),
     
-//    .new_pointx(new_pointx),
-//    .new_pointy(new_pointy),
+    .new_pointx(new_pointx),
+    .new_pointy(new_pointy),
     
-//    .add_new_point_q(add_new_point_q),
+    .add_new_point_q(add_new_point_q),
     
-//    .new_point_parentx(new_point_parentx),
-//    .new_point_parenty(new_point_parenty),
-//    .best_neighboridx(best_neighboridx),
+    .new_point_parentx(new_point_parentx),
+    .new_point_parenty(new_point_parenty),
+    .best_neighboridx(best_neighboridx),
     
     .search_neighbor(search_neighbor),
     .done_with_search_nearest_neighbor(done_with_search_nearest_neighbor),
@@ -230,7 +234,6 @@ core #(
     .entering_check_new_point_q_collision(entering_check_new_point_q_collision),
     .do_traceback(do_traceback),
 
-    
     .finalcost(finalcost),
     .final_xcoord(final_xcoord),
     .final_ycoord(final_ycoord),
@@ -238,16 +241,16 @@ core #(
     .new_tracebackptr(new_tracebackptr)
 
     
-//    .outermost_loopcheck(outermost_loopcheck),    
-//    .outermost_counter_less_than(outermost_counter_less_than),
+    .outermost_loopcheck(outermost_loopcheck),    
+    .outermost_counter_less_than(outermost_counter_less_than),
     
-//    .goalreached(goalreached),
+    .goalreached(goalreached),
     
 //    .systolic_val_x1q(systolic_val_x1q),
 //    .systolic_val_y1q(systolic_val_y1q),
 //    .cmin(cmin),
 //    .systolic_val_parent_indexq(systolic_val_parent_indexq),
-    
+
 //    .nbx(nbx),
 //    .nby(nby),
 //    .nbindex(nbindex)
@@ -256,6 +259,19 @@ core #(
 );
 
 integer cycles;
+
+// lauren - added this - make sure to remove
+integer occ_file;
+integer i;
+reg printed_once;
+initial begin
+    printed_once = 0;
+    occ_file = $fopen("occupied_points_dump_test_10.txt", "w");
+    if (occ_file == 0) begin
+        $display("ERROR: could not open occupied_points_dump.txt");
+        $finish;
+    end
+end
 
 initial clk = 1'b0;
 always
@@ -273,7 +289,6 @@ end
 
 // initialize all the inputs
 initial begin  
-<<<<<<< HEAD
 
     start_x = 10'd111;  // Inside the goal box
     start_y = 10'd15;
@@ -296,17 +311,40 @@ end
 initial begin
     forever begin @(posedge clk);
         cycles = cycles + 1;
+
+        // Dump array if path found, path failed, or timeout
+        if (!printed_once && 
+            (output_state == 4'b1000 || output_state == 4'b1001 || cycles >= 100000)) begin
+            printed_once = 1;
+
+            $fdisplay(occ_file, "Occupied points array dump at time %0t", $time);
+            for (i = 0; i < 4096; i = i + 1) begin
+                $fdisplay(occ_file,
+                    "[%0d] = %h",
+                    i,
+                    dut.datapath_inst.occupied_points_array[i]  // adjust hierarchy if needed
+                );
+            end
+            $fdisplay(occ_file, "---- end dump ----\n");
+            $fflush(occ_file);
+            $display("Occupied points array written to file.");
+        end
+
+        // Debug messages
         if (output_state == 4'b1000) begin
             $display("time: %0t", $time);
-            $display("path not found"); // need to make sure the right stuff is printed in traceback and failure to see how far we got
-//            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord);  
-//            $display("cost: %d", finalcost); 
+            $display("path not found");
         end else if (output_state == 4'b1001) begin
+            $display("time: %0t", $time);
             $display("path found");
-//            $display("(x,y): (%d, %d)", final_xcoord, final_ycoord); // Lauren - uncomment these to get x,y and also add a signal to print out the occupied array index pointer
-//            $display("cost: %d", finalcost); // Lauren - find the cost per hour to run on an FPGA, have Han find the cost per hour to run on the Google Cloud CPU
-        end else if (output_state == 4'b1010) begin
-            $display("cycles: %0d", cycles);        
+        end
+
+        // Finish simulation if either path finished or timeout
+        if (output_state == 4'b1010 || cycles >= 3860000) begin
+            $display("cycles: %0d", cycles);
+            $fflush(occ_file);
+            $fclose(occ_file);
+            $display("File closed. Simulation finished.");
             $finish;
         end
     end

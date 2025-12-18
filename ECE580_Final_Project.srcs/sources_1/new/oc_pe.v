@@ -46,7 +46,6 @@ module oc_pe #(
     
     output x_span_out,
     output y_span_out
-
 );
 
     assign x_span_out = x_span;
@@ -80,8 +79,8 @@ module oc_pe #(
                     (y2_in <= obs_bottom_in) && (y2_in >= obs_top_in)) : 1;
     
     assign check2_collision = (valid_in) ? ((one_above_one_below && x_span) || (one_right_one_left && y_span)) : 1; // if the steered point is inside the obstacle then both x span and y span should get triggered
-    
-    
+
+      
     // COLLISION CHECK 3: Corner intersection detection
     // Detects when line segment enters/exits through obstacle corners
     // Example: p1 inside obstacle horizontally, p2 outside to the left
@@ -128,6 +127,7 @@ module oc_pe #(
     assign check3_right_edge = (valid_in) ? ((dx != 0) &&
                               ((p1_x_inside && !p2_x_inside && (x2_in > obs_right_in)) || (p2_x_inside && !p1_x_inside && (x1_in > obs_right_in))) && 
                               (y_at_right_edge <= obs_bottom_in) && (y_at_right_edge >= obs_top_in)) : 1;
+
     
     // 3D: Case 2 - Point 1's y is inside obstacle, Point 2's y is outside ---
     // Check if line crosses top or bottom boundary within the obstacle's horizontal range
@@ -141,6 +141,7 @@ module oc_pe #(
     // Collision if: p1's y inside, p2's y above, AND crossing point's x is within obstacle bounds
     assign check3_top_edge = (valid_in) ? ((dy != 0) && p1_y_inside && !p2_y_inside && (y2_in > obs_top_in) &&
                              (x_at_top_edge >= obs_left_in) && (x_at_top_edge <= obs_right_in)) : 1;
+
 
     // Calculate x-coordinate where line crosses bottom boundary
     assign x_at_bottom_edge = (valid_in) ? ((dy == 0) ? $signed(x1_in) : 
