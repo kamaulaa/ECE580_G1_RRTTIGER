@@ -8,7 +8,7 @@
 module oc_array #(
     parameter NUM_PE = 5, // need a way to change this parameter based on how many randomly generated obstacles we have 
     // number of PEs is the number of obstacles
-    parameter PARENT_BITS = 10,
+    parameter PARENT_BITS = 12, // lauren: was 10
     parameter COORDINATE_WIDTH = 7
 )(
     input wire clk,

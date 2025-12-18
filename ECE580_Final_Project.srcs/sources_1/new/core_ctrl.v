@@ -13,23 +13,23 @@ module core_ctrl
     // ADJUSTABLE GRID PARAMETERS
     parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = 1023,
-    parameter OUTERMOST_ITER_BITS = 10, // log2(OUTERMOST_ITER_MAX)
+    parameter OUTERMOST_ITER_MAX = 4095, // lauren: was 1023
+    parameter OUTERMOST_ITER_BITS = 12, // log2(OUTERMOST_ITER_MAX) lauren: was 10
     parameter X_BITS = 7, // log2(GRID_WIDTH)
-    parameter Y_BITS = 7, // log2(GRID_HEIGHT )
+    parameter Y_BITS = 7, // log2(GRID_HEIGHT)
     parameter ADDR_BITS = 14 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
 )
 (
     input clk,
     input reset,
     
-//    // debugging wires
-//    output failure_state,
-//    output traceback_state,
+    // debugging wires
+    output failure_state,
+    output traceback_state,
     output [3:0] output_state,
-//    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
-//    output outermost_loopcheck,
-//    output outermost_counter_less_than,
+    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
+    output outermost_loopcheck,
+    output outermost_counter_less_than,
     
     // Inputs from the datapath
     input path_found,
@@ -80,9 +80,9 @@ module core_ctrl
     // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> add edge
     // 0 -> 1 -> 2 -> c -> 3 -> b -> d -> 4 -> 7
 
-//    assign outermost_loopcounter = outermost_loop_counter;
-//    assign outermost_loopcheck = outermost_loop_check;
-//    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
+    assign outermost_loopcounter = outermost_loop_counter;
+    assign outermost_loopcheck = outermost_loop_check;
+    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
 
     reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter; // = {OUTERMOST_ITER_BITS{1'b0}}; 
     wire outermost_loop_check = !path_found && (outermost_loop_counter < OUTERMOST_ITER_MAX);
