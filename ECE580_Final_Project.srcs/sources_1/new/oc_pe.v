@@ -61,7 +61,7 @@ module oc_pe #(
     assign both_right  = (valid_in) ? ((x1_in > obs_right_in) && (x2_in > obs_right_in)) : 0;
     assign one_above_one_below = (valid_in) ? (((y1_in < obs_top_in) && (y2_in > obs_bottom_in)) || ((y2_in < obs_top_in) && (y1_in > obs_bottom_in)) || p1_y_inside || p2_y_inside) : 1;
     assign one_right_one_left =  (valid_in) ? (((x1_in < obs_left_in) && (x2_in > obs_right_in)) || ((x2_in < obs_left_in) && (x1_in > obs_right_in)) ): 1;
-    
+
     // If any of these is true, segment doesn't collide with obstacle
     assign check1_pass = (valid_in) ? (both_above || both_below || both_left || both_right) : 0; // being inside isn't checked herekm
     
@@ -147,6 +147,7 @@ module oc_pe #(
                               $signed(x1_in) + (dx * ($signed(obs_bottom_in) - $signed(y1_in))) / dy) : {2*COORDINATE_WIDTH{1'b0}} ;
     // Collision if: p1's y inside, p2's y below, AND crossing point's x is within obstacle bounds
     assign check3_bottom_edge = (valid_in) ? ((dy != 0) && p1_y_inside && !p2_y_inside && (y2_in < obs_bottom_in) &&
+
                                 (x_at_bottom_edge >= obs_left_in) && (x_at_bottom_edge <= obs_right_in)) : 1;
     
     // Check 3 detects collision if line crosses any of the 4 edges (left, right, top, bottom)
@@ -164,6 +165,7 @@ module oc_pe #(
    // Collision occurs if Check 1 fails to reject AND any other check detects collision
     wire local_collision;
     assign local_collision = (valid_in) ? !check1_pass || (check2_collision || check3_collision || p1_inside || p2_inside) : 1; // TODO: lauren changed this to an OR
+
 
     // OUTPUT registers 
     // registers endpoint data and collision result on each clock cycle
