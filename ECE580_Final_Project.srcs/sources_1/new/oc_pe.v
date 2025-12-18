@@ -59,8 +59,8 @@ module oc_pe #(
     assign both_below  = (y1_in > obs_bottom_in) && (y2_in > obs_bottom_in); // lauren: flipped this
     assign both_left   = (x1_in < obs_left_in) && (x2_in < obs_left_in);
     assign both_right  = (x1_in > obs_right_in) && (x2_in > obs_right_in);
-    assign one_above_one_below = ((y1_in < obs_top_in) && (y2_in > obs_bottom_in)) || ((y2_in < obs_top_in) && (y1_in > obs_bottom_in)) || p1_y_inside || p2_y_inside;
-    assign one_right_one_left = ((x1_in < obs_left_in) && (x2_in > obs_right_in)) || ((x2_in < obs_left_in) && (x1_in > obs_right_in));
+    assign one_above_one_below = (!valid_in) ? ((y1_in < obs_top_in) && (y2_in > obs_bottom_in)) || ((y2_in < obs_top_in) && (y1_in > obs_bottom_in)) || p1_y_inside || p2_y_inside : 1;
+    assign one_right_one_left =  (!valid_in) ? ((x1_in < obs_left_in) && (x2_in > obs_right_in)) || ((x2_in < obs_left_in) && (x1_in > obs_right_in)): 1;
     
     // If any of these is true, segment doesn't collide with obstacle
     assign check1_pass = both_above || both_below || both_left || both_right; // being inside isn't checked herekm
@@ -71,14 +71,14 @@ module oc_pe #(
     wire check2_collision; // 1 means collided with obstacle
     
     // Both x-coordinates within obstacle bounds means they span vertically across it
-    assign x_span = (x1_in >= obs_left_in) && (x1_in <= obs_right_in) &&
-                    (x2_in >= obs_left_in) && (x2_in <= obs_right_in);
+    assign x_span = (!valid_in) ? ((x1_in >= obs_left_in) && (x1_in <= obs_right_in) &&
+                    (x2_in >= obs_left_in) && (x2_in <= obs_right_in)) : 1;
     
     // Both y-coordinates within obstacle bounds means they span horizontally across it  
-    assign y_span = (y1_in <= obs_bottom_in) && (y1_in >= obs_top_in) &&
-                    (y2_in <= obs_bottom_in) && (y2_in >= obs_top_in);
+    assign y_span = (!valid_in) ? ((y1_in <= obs_bottom_in) && (y1_in >= obs_top_in) &&
+                    (y2_in <= obs_bottom_in) && (y2_in >= obs_top_in)) : 1;
     
-    assign check2_collision = (one_above_one_below && x_span) || (one_right_one_left && y_span); // if the steered point is inside the obstacle then both x span and y span should get triggered
+    assign check2_collision = (!valid_in) ? ((one_above_one_below && x_span) || (one_right_one_left && y_span)) : 1; // if the steered point is inside the obstacle then both x span and y span should get triggered
     
     
     // COLLISION CHECK 3: Corner intersection detection
@@ -106,27 +106,27 @@ module oc_pe #(
     
     // Calculate y-coordinate where line crosses left boundary using: y = y1 + slope * (x_boundary - x1)
     // Guard against division by zero when dx == 0 (vertical line)
-    assign y_at_left_edge = (p1_x_inside) ? ((dx == 0) ? $signed(y1_in) : 
+    assign y_at_left_edge = (!valid_in) ? ((p1_x_inside) ? ((dx == 0) ? $signed(y1_in) : 
                             $signed(y1_in) + (dy * ($signed(obs_left_in) - $signed(x1_in))) / dx) :
                             (p2_x_inside) ? ((dx == 0) ? $signed(y2_in) : 
-                            $signed(y2_in) + (dy * ($signed(obs_left_in) - $signed(x2_in))) / -dx) : 0;                          
+                            $signed(y2_in) + (dy * ($signed(obs_left_in) - $signed(x2_in))) / -dx) : 0) : {2*COORDINATE_WIDTH{1'b0}};                          
                             
     // Collision if: p1's x inside, p2's x to the left, AND crossing point's y is within obstacle bounds
-    assign check3_left_edge = (dx != 0) &&
+    assign check3_left_edge = (!valid_in) ? ( (dx != 0) &&
                               ((p1_x_inside && !p2_x_inside && (x2_in < obs_left_in)) || (p2_x_inside && !p1_x_inside && (x1_in < obs_left_in))) && 
-                              (y_at_left_edge <= obs_bottom_in) && (y_at_left_edge >= obs_top_in);
+                              (y_at_left_edge <= obs_bottom_in) && (y_at_left_edge >= obs_top_in)) : 1;
 
     // TODO: lauren check the right edge after 
     // Calculate y-coordinate where line crosses right boundary
-    assign y_at_right_edge = (p1_x_inside) ? ((dx == 0) ? $signed(y1_in) : 
+    assign y_at_right_edge = (!valid_in) ? ((p1_x_inside) ? ((dx == 0) ? $signed(y1_in) : 
                             $signed(y1_in) + (dy * ($signed(obs_right_in) - $signed(x1_in))) / dx) :
                             (p2_x_inside) ? ((dx == 0) ? $signed(y2_in) : 
-                            $signed(y2_in) + (dy * ($signed(obs_right_in) - $signed(x2_in))) / -dx) : 0;                          
+                            $signed(y2_in) + (dy * ($signed(obs_right_in) - $signed(x2_in))) / -dx) : 0) : {2*COORDINATE_WIDTH{1'b0}} ;                          
                
     // Collision if: p1's x inside, p2's x to the right, AND crossing point's y is within obstacle bounds
-    assign check3_right_edge = (dx != 0) &&
+    assign check3_right_edge = (!valid_in) ? ((dx != 0) &&
                               ((p1_x_inside && !p2_x_inside && (x2_in > obs_right_in)) || (p2_x_inside && !p1_x_inside && (x1_in > obs_right_in))) && 
-                              (y_at_right_edge <= obs_bottom_in) && (y_at_right_edge >= obs_top_in);
+                              (y_at_right_edge <= obs_bottom_in) && (y_at_right_edge >= obs_top_in)) : 1;
     
     // 3D: Case 2 - Point 1's y is inside obstacle, Point 2's y is outside ---
     // Check if line crosses top or bottom boundary within the obstacle's horizontal range
@@ -135,34 +135,34 @@ module oc_pe #(
     
     // Calculate x-coordinate where line crosses top boundary using: x = x1 + (1/slope) * (y_boundary - y1)
     // Guard against division by zero when dy == 0 (horizontal line)
-    assign x_at_top_edge = (dy == 0) ? $signed(x1_in) : 
-                           $signed(x1_in) + (dx * ($signed(obs_top_in) - $signed(y1_in))) / dy;
+    assign x_at_top_edge = (!valid_in) ? ((dy == 0) ? $signed(x1_in) : 
+                           $signed(x1_in) + (dx * ($signed(obs_top_in) - $signed(y1_in))) / dy) : {2*COORDINATE_WIDTH{1'b0}};
     // Collision if: p1's y inside, p2's y above, AND crossing point's x is within obstacle bounds
-    assign check3_top_edge = (dy != 0) && p1_y_inside && !p2_y_inside && (y2_in > obs_top_in) &&
-                             (x_at_top_edge >= obs_left_in) && (x_at_top_edge <= obs_right_in);
+    assign check3_top_edge = (!valid_in) ? ((dy != 0) && p1_y_inside && !p2_y_inside && (y2_in > obs_top_in) &&
+                             (x_at_top_edge >= obs_left_in) && (x_at_top_edge <= obs_right_in)) : 1;
 
     // Calculate x-coordinate where line crosses bottom boundary
-    assign x_at_bottom_edge = (dy == 0) ? $signed(x1_in) : 
-                              $signed(x1_in) + (dx * ($signed(obs_bottom_in) - $signed(y1_in))) / dy;
+    assign x_at_bottom_edge = (!valid_in) ? ((dy == 0) ? $signed(x1_in) : 
+                              $signed(x1_in) + (dx * ($signed(obs_bottom_in) - $signed(y1_in))) / dy) : {2*COORDINATE_WIDTH{1'b0}} ;
     // Collision if: p1's y inside, p2's y below, AND crossing point's x is within obstacle bounds
-    assign check3_bottom_edge = (dy != 0) && p1_y_inside && !p2_y_inside && (y2_in < obs_bottom_in) &&
-                                (x_at_bottom_edge >= obs_left_in) && (x_at_bottom_edge <= obs_right_in);
+    assign check3_bottom_edge = (!valid_in) ? ((dy != 0) && p1_y_inside && !p2_y_inside && (y2_in < obs_bottom_in) &&
+                                (x_at_bottom_edge >= obs_left_in) && (x_at_bottom_edge <= obs_right_in)) : 1;
     
     // Check 3 detects collision if line crosses any of the 4 edges (left, right, top, bottom)
     wire check3_collision;
-    assign check3_collision = check3_left_edge || check3_right_edge || 
-                              check3_top_edge || check3_bottom_edge;
+    assign check3_collision = (!valid_in) ? check3_left_edge || check3_right_edge || 
+                              check3_top_edge || check3_bottom_edge : 1;
     
     
     // COLLISION CHECK 4: Either endpoint is completely inside the obstacle
     // If any point is fully enclosed, that's definitely a collision
     wire p1_inside, p2_inside;
-    assign p1_inside = p1_x_inside && p1_y_inside;  // Point 1 inside if BOTH x AND y are inside bounds
-    assign p2_inside = p2_x_inside && p2_y_inside;  // Point 2 inside if BOTH x AND y are inside bounds
+    assign p1_inside = (!valid_in) ? p1_x_inside && p1_y_inside : 1;  // Point 1 inside if BOTH x AND y are inside bounds
+    assign p2_inside = (!valid_in) ? p2_x_inside && p2_y_inside : 1;  // Point 2 inside if BOTH x AND y are inside bounds
     
    // Collision occurs if Check 1 fails to reject AND any other check detects collision
     wire local_collision;
-    assign local_collision = !check1_pass || (check2_collision || check3_collision || p1_inside || p2_inside); // TODO: lauren changed this to an OR
+    assign local_collision = (!valid_in) ? 1 : !check1_pass || (check2_collision || check3_collision || p1_inside || p2_inside); // TODO: lauren changed this to an OR
 
     // OUTPUT registers 
     // registers endpoint data and collision result on each clock cycle
