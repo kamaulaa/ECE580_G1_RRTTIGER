@@ -80,7 +80,6 @@ module oc_pe #(
     
     assign check2_collision = (valid_in) ? ((one_above_one_below && x_span) || (one_right_one_left && y_span)) : 1; // if the steered point is inside the obstacle then both x span and y span should get triggered
 
-      
     // COLLISION CHECK 3: Corner intersection detection
     // Detects when line segment enters/exits through obstacle corners
     // Example: p1 inside obstacle horizontally, p2 outside to the left
