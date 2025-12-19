@@ -1,12 +1,6 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Kamaula
-// File: oc_pe
-// processing element implementation for obstacle checking
-//
-// NOTE: Check 3 uses combinational division which creates long critical path
-//       To increase throughput, we should consider pipelining the divisions in Check 3
-//       across multiple cycles (adds latency but increases clock frequency).
+// Module Name: Oc_pe.v
 //////////////////////////////////////////////////////////////////////////////////
 
 module oc_pe #(

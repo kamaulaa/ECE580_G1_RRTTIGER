@@ -1,11 +1,6 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-
-// Create Date: 11/15/2025 10:31:48 AM
-// Design Name: 
-// Module Name: core_ctrl
-// Project Name: ECE580 Final Project
-
+// Module Name: Core_ctrl.v
 //////////////////////////////////////////////////////////////////////////////////
 
 module core_ctrl
@@ -13,8 +8,8 @@ module core_ctrl
     // ADJUSTABLE GRID PARAMETERS
     parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = 511, // lauren: was 1023
-    parameter OUTERMOST_ITER_BITS = 9, // log2(OUTERMOST_ITER_MAX) lauren: was 10
+    parameter OUTERMOST_ITER_MAX = 511, 
+    parameter OUTERMOST_ITER_BITS = 9, // log2(OUTERMOST_ITER_MAX) 
     parameter X_BITS = 7, // log2(GRID_WIDTH)
     parameter Y_BITS = 7, // log2(GRID_HEIGHT)
     parameter ADDR_BITS = 14 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr
@@ -23,14 +18,8 @@ module core_ctrl
     input clk,
     input reset,
     
-//    // debugging wires
-//    output failure_state,
-//    output traceback_state,
     output [3:0] output_state,
-//    output [OUTERMOST_ITER_BITS-1:0] outermost_loopcounter,
-//    output outermost_loopcheck,
-//    output outermost_counter_less_than,
-    
+
     // Inputs from the datapath
     input path_found,
     input new_point_q_collided,
@@ -46,8 +35,8 @@ module core_ctrl
     // Need output control signals to the datapath
     output reg init_state,
     output reg add_edge_state,
-    output reg generate_req, // to random point generator module
-    output reg search_neighbor, // signal to search neighbor from random generated point 
+    output reg generate_req, 
+    output reg search_neighbor,
     output reg entering_search_nearest_neighbor,
     output reg add_new_point_q,
     output reg eval_random_point,
@@ -66,7 +55,7 @@ module core_ctrl
     localparam INIT = 4'b0000;                          // 0
     localparam OUTERMOST_LOOP_CHECK = 4'b0001;          // 1
     localparam GENERATE_RANDOM_POINT = 4'b0010;         // 2
-    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;       // 3 // Why does the SEARCH_NEAREST_NEIGHBOR never get bigger?
+    localparam SEARCH_NEAREST_NEIGHBOR = 4'b0011;       // 3 
     localparam CHECK_NEW_POINT_Q_COLLISION = 4'b0100;   // 4
     localparam CHECK_POINTS_IN_SQUARE_RADIUS = 4'b0101; // 5
     localparam DRAIN_ARR = 4'b0110;                     // 6
@@ -77,14 +66,8 @@ module core_ctrl
     localparam ADD_NEW_POINT_Q = 4'b1011;               // b
     localparam EVAL_RANDOM_POINT = 4'b1100;             // c
     localparam CHECK_STEERED_POINT = 4'b1101;           // d
-    // init -> outer -> generate rand -> eval rand -> search nn -> add q -> check steered -> check q collision -> add edge
-    // 0 -> 1 -> 2 -> c -> 3 -> b -> d -> 4 -> 7
 
-//    assign outermost_loopcounter = outermost_loop_counter;
-//    assign outermost_loopcheck = outermost_loop_check;
-//    assign outermost_counter_less_than = outermost_loop_counter < OUTERMOST_ITER_MAX;
-
-    reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter; // = {OUTERMOST_ITER_BITS{1'b0}}; 
+    reg [OUTERMOST_ITER_BITS-1:0] outermost_loop_counter;
     wire outermost_loop_check = !path_found && (outermost_loop_counter < OUTERMOST_ITER_MAX);
 
     reg [3:0] state;
@@ -95,7 +78,6 @@ module core_ctrl
     always @ ( posedge clk ) begin
         if ( reset ) begin
             state <= INIT;
-//            outermost_loop_counter <= 0;
         end
         else begin
             state <= next_state;
@@ -215,9 +197,6 @@ module core_ctrl
         
         end
     end
-       
-//    assign failure_state = state == FAILURE;
-//    assign traceback_state = state == TRACEBACK;
 
     always @ (*) begin
         // Default assignments to prevent latches
@@ -250,7 +229,6 @@ module core_ctrl
             end
             
             EVAL_RANDOM_POINT: begin
-//                eval_random_point = 1'b1;
                 if ( done_evaluating_random_point == 1'b0 ) begin
                     // stay evaluating
                     next_state = EVAL_RANDOM_POINT;
@@ -280,15 +258,12 @@ module core_ctrl
             CHECK_STEERED_POINT: begin
                 if (done_checking_steered_point == 1'b0) begin
                     next_state = CHECK_STEERED_POINT;
-                    // entering_check_steered_point = 1'b0;
                 end else if (steered_point_in_obstacle == 1'b1) begin
                     // Steered point is inside obstacle - fast reject, generate new random point
                     next_state = GENERATE_RANDOM_POINT;
-                    // generate_req = 1'b1;
                 end else begin
                     // Steered point is valid - proceed to check all neighbor connections
                     next_state = CHECK_NEW_POINT_Q_COLLISION;
-                    // entering_check_new_point_q_collision = 1'b1;
                 end
             end
 
@@ -310,12 +285,7 @@ module core_ctrl
             end
 
             FAILURE: begin
-//                next_state = FAILURE;
-                if (done_traceback == 1'b1) begin
-                    next_state = SUCCESS; // this is just for debugging
-                end else begin
-                    next_state = TRACEBACK;
-                end
+                next_state = FAILURE;
             end
 
             TRACEBACK: begin
