@@ -1,4 +1,4 @@
-Hello ECE580 course staff:
+Hello ECE580 course staff!
 
 This is our final project, RRT-Tiger. The structure of this repository is as follows:
 
