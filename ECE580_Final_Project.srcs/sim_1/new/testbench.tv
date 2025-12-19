@@ -282,22 +282,22 @@ end
 
 // initialize all the inputs
 initial begin  
+
 // Start position
-start_x = 10'd120;
-start_y = 10'd120;
+start_x = 10'd60;
+start_y = 10'd2;
 
 // Goal region
-goal_top_bound    = 10'd2;
-goal_bottom_bound = 10'd12;
-goal_left_bound   = 10'd60;
-goal_right_bound  = 10'd70;
+goal_top_bound    = 10'd55;
+goal_bottom_bound = 10'd65;
+goal_left_bound   = 10'd55;
+goal_right_bound  = 10'd65;
 
 // Obstacles
-obs_left   = {7'd115, 7'd115, 7'd90,  7'd40,  7'd70};
-obs_right  = {7'd120, 7'd120, 7'd95,  7'd45,  7'd75};
-obs_top    = {7'd5,   7'd60,  7'd60,  7'd40,  7'd110};
-obs_bottom = {7'd10,  7'd65,  7'd65,  7'd45,  7'd115};
-
+obs_left   = {7'd5,   7'd5,   7'd115, 7'd60,  7'd115};
+obs_right  = {7'd10,  7'd10,  7'd120, 7'd65,  7'd120};
+obs_top    = {7'd30,  7'd60,  7'd60,  7'd30,  7'd30};
+obs_bottom = {7'd35,  7'd65,  7'd65,  7'd35,  7'd35};
 
 
 

@@ -115,7 +115,7 @@ module core
     output [COORDINATE_WIDTH-1:0] final_ycoord, // this changes each cycle of traceback
     
     output [OUTERMOST_ITER_BITS-1:0] tracebackptr,
-    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr,
+    output [OUTERMOST_ITER_BITS-1:0] new_tracebackptr
     
 //    output outermost_loopcheck,
 //    output outermost_counter_less_than,
@@ -271,7 +271,7 @@ module core
         .final_xcoord(final_xcoord),
         .final_ycoord(final_ycoord),
         .tracebackptr(tracebackptr),
-        .new_tracebackptr(new_tracebackptr),
+        .new_tracebackptr(new_tracebackptr)
         
 //        .goalreached(goalreached),
 //        .systolic_val_x1q(systolic_val_x1q),
