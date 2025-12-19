@@ -11,8 +11,8 @@ module core
     parameter N = 128,
     parameter N_SQUARED = N * N,
     parameter N_BITS = 7,
-    parameter OUTERMOST_ITER_MAX = 4095, // lauren: was 1023
-    parameter OUTERMOST_ITER_BITS = 12, // lauren: was 10
+    parameter OUTERMOST_ITER_MAX = 511, // lauren: was 1023
+    parameter OUTERMOST_ITER_BITS = 9, // lauren: was 10
     parameter COST_WIDTH = 16, // TODO: maybe change the cost width --> max it would take up 19 bits, so maybe we could truncate it more
     parameter ADDR_BITS = 14,
     parameter ARRAY_WIDTH = OUTERMOST_ITER_BITS + COORDINATE_WIDTH*2 + COST_WIDTH

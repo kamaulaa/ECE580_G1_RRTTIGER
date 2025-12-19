@@ -16,8 +16,8 @@ parameter NUM_PE_WIDTH = 3;
 parameter N = 128;
 parameter N_SQUARED = N * N;
 parameter N_BITS = 7;
-parameter OUTERMOST_ITER_MAX = 4095; // lauren: 1023
-parameter OUTERMOST_ITER_BITS = 12; // lauren: 10
+parameter OUTERMOST_ITER_MAX = 511; // lauren: 1023
+parameter OUTERMOST_ITER_BITS = 9; // lauren: 10
 parameter COST_WIDTH = 16; // change the cost width
 parameter ADDR_BITS = 14;
 
@@ -281,7 +281,7 @@ integer i;
 reg printed_once;
 initial begin
     printed_once = 0;
-    occ_file = $fopen("occupied_points_dump_test_4.txt", "w");
+    occ_file = $fopen("occupied_points_dump_test_8.txt", "w");
     if (occ_file == 0) begin
         $display("ERROR: could not open occupied_points_dump.txt");
         $finish;
@@ -290,7 +290,6 @@ end
 
 // initialize all the inputs
 initial begin  
-
     start_x = 10'd111;  // Inside the goal box
     start_y = 10'd15;
 
@@ -305,7 +304,6 @@ initial begin
     obs_right   =   { 7'd127,   7'd127, 7'd127, 7'd127, 7'd127};
     obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
     obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
-
 
 end
 
