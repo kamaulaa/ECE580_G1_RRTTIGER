@@ -2,7 +2,7 @@ Hello ECE580 course staff:
 
 This is our final project, RRT-Tiger. The structure of this repository is as follows:
 
-Our FPGA-based RRT implementation can be found under ECE580_Final_Project.srcs, and the CPU RRT implementation used for testing comparison is located at FILE NAME.
+Our FPGA-based RRT implementation can be found under ECE580_Final_Project.srcs, and the CPU RRT* implementation used for testing comparison is located at rrt_star.cpp.
 Within ECE580_Final_Project.srcs, there are 2 subdirectories.
 The first, sim_1/new, contains testbench.tv, which is the file that we used in Vivado to run simulations with our various tests and examine the waveforms.
 The second subdirectory, sources_1/new, contains the actual source files that constitute our RRT-Tiger implementation.
