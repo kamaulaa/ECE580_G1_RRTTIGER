@@ -16,8 +16,8 @@ parameter NUM_PE_WIDTH = 3;
 parameter N = 128;
 parameter N_SQUARED = N * N;
 parameter N_BITS = 7;
-parameter OUTERMOST_ITER_MAX = 4095; // lauren: 1023
-parameter OUTERMOST_ITER_BITS = 12; // lauren: 10
+parameter OUTERMOST_ITER_MAX = 511; // lauren: 1023
+parameter OUTERMOST_ITER_BITS = 9; // lauren: 10
 parameter COST_WIDTH = 16; // change the cost width
 parameter ADDR_BITS = 14;
 
@@ -273,7 +273,7 @@ integer i;
 reg printed_once;
 initial begin
     printed_once = 0;
-    occ_file = $fopen("occupied_points_dump_test_4.txt", "w");
+    occ_file = $fopen("occupied_points_dump_test_8.txt", "w");
     if (occ_file == 0) begin
         $display("ERROR: could not open occupied_points_dump.txt");
         $finish;
@@ -282,22 +282,24 @@ end
 
 // initialize all the inputs
 initial begin  
+// Start position
+start_x = 10'd120;
+start_y = 10'd120;
 
-    start_x = 10'd111;  // Inside the goal box
-    start_y = 10'd15;
-    
-    // Goal region: 10x10 box in upper-right corner
-    goal_top_bound    = 10;
-    goal_bottom_bound = 20;
-    goal_left_bound   = 116-10;
-    goal_right_bound  = 116;
-    
-    // No obstacles needed - overlapped in top right corner
-    obs_left    =   { 7'd126,   7'd126, 7'd126, 7'd126, 7'd126};
-    obs_right   =   { 7'd127,   7'd127, 7'd127, 7'd127, 7'd127};
-    obs_top     =   { 7'd0,     7'd0,   7'd0,   7'd0,   7'd0};
-    obs_bottom  =   { 7'd1,     7'd1,   7'd1,   7'd1,   7'd1};
-    
+// Goal region
+goal_top_bound    = 10'd2;
+goal_bottom_bound = 10'd12;
+goal_left_bound   = 10'd60;
+goal_right_bound  = 10'd70;
+
+// Obstacles
+obs_left   = {7'd115, 7'd115, 7'd90,  7'd40,  7'd70};
+obs_right  = {7'd120, 7'd120, 7'd95,  7'd45,  7'd75};
+obs_top    = {7'd5,   7'd60,  7'd60,  7'd40,  7'd110};
+obs_bottom = {7'd10,  7'd65,  7'd65,  7'd45,  7'd115};
+
+
+
 
 end
 

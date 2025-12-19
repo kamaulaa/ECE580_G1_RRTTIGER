@@ -13,8 +13,8 @@ module core_ctrl
     // ADJUSTABLE GRID PARAMETERS
     parameter N = 128,
     parameter N_SQUARED = N * N,
-    parameter OUTERMOST_ITER_MAX = 4095, // lauren: was 1023
-    parameter OUTERMOST_ITER_BITS = 12, // log2(OUTERMOST_ITER_MAX) lauren: was 10
+    parameter OUTERMOST_ITER_MAX = 511, // lauren: was 1023
+    parameter OUTERMOST_ITER_BITS = 9, // log2(OUTERMOST_ITER_MAX) lauren: was 10
     parameter X_BITS = 7, // log2(GRID_WIDTH)
     parameter Y_BITS = 7, // log2(GRID_HEIGHT)
     parameter ADDR_BITS = 14 // log2(GRID_WIDTH * GRID_HEIGHT) for flattened addr

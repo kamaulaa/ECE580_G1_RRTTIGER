@@ -15,8 +15,8 @@ module datapath #(
     parameter N = 128,
     parameter N_SQUARED = N * N,  // 1024 * 1024 = 1,048,576
     parameter N_BITS = 7, // log2(N)
-    parameter OUTERMOST_ITER_MAX = 4095, // number of points that can be generated & stored until failure - lauren: was 1023
-    parameter OUTERMOST_ITER_BITS = 12, // log2(OUTERMOST_ITER_MAX) - lauren: was 10
+    parameter OUTERMOST_ITER_MAX = 511, // number of points that can be generated & stored until failure - lauren: was 1023
+    parameter OUTERMOST_ITER_BITS = 9, // log2(OUTERMOST_ITER_MAX) - lauren: was 10
     parameter COST_WIDTH = 16,  // bits for accumulated cost storage - THIS IS AN ESTIMATE IDKK                 // for 1024x1024 grid: max single edge = 2046, max accumulated ~32 edges = 65,472 (needs 16 bits)
     parameter ADDR_BITS = 14    // log2(N_SQUARED) = log2(1,048,576) = 20
 )(
