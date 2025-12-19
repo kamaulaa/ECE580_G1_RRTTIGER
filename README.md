@@ -10,9 +10,15 @@ The second subdirectory, sources_1/new, contains the actual source files that co
 The purpose of each source file is as follows:
 
 core.v: Instantiates the core_ctrl and datapath modules, linking inputs/outputs between them correctly.
+
 core_ctrl.v: Contains the controller/FSM logic.
+
 datapath.v: Contains the datapath.
+
 oc_array.v: The obstacle checking systolic array. Instantiated by the datapath module.
+
 oc_pe.v: The individual PEs inside the systolic array. Instantiated by the datapath module.
+
 quantization_block.v: Computes Manhattan distance between two points needed for cost calculation. Instantiated by the datapath module.
+
 random_generator.v: Generates random points to be used on each iteration of the algorithm. Instantiated by the datapath module.
